@@ -1,0 +1,811 @@
+const mongoose = require("mongoose");
+const dotenv = require("dotenv");
+const fs = require("fs");
+const asyncHandler = require("express-async-handler");
+const { Video, VideoLike, VideoComment } = require("../models/videoModel.js");
+const Subscribes = require("../models/subscribeModel.js");
+const multer = require("multer");
+const path = require("path");
+const { AdminDashboard } = require("../models/userModel.js");
+require("dotenv").config();
+
+const video_names_path = [];
+const thumbnail_names_path = [];
+
+const storage = multer.diskStorage({
+      destination: (req, file, cb) => {
+            const userId = req.user._id;
+            const uploadPath = `public/video/${userId}`;
+
+            // Check if the directory exists, create it if not
+            if (!fs.existsSync(uploadPath)) {
+                  fs.mkdirSync(uploadPath, { recursive: true });
+            }
+
+            cb(null, uploadPath);
+      },
+      filename: (req, file, cb) => {
+            const ext = path.extname(file.originalname);
+            const uniqueSuffix =
+                  Date.now() + "-" + Math.round(Math.random() * 1e9);
+            const fileName = file.fieldname + "-" + uniqueSuffix + ext;
+
+            if (file.fieldname === "video") {
+                  video_names_path[0] = fileName;
+            } else if (file.fieldname === "thumbnail") {
+                  thumbnail_names_path[0] = fileName;
+            }
+
+            cb(null, fileName);
+      },
+});
+
+const upload = multer({ storage: storage });
+
+const uploadVideo = asyncHandler(async (req, res) => {
+      // upload.fields([
+      //       { name: "video", maxCount: 1 },
+      //       { name: "thumbnail", maxCount: 1 },
+      // ])(req, res, async (err) => {
+      //       if (err) {
+      //             return res.status(400).json({
+      //                   message: "Error uploading file.",
+      //                   status: false,
+      //             });
+      //       }
+
+      const { category_id, description, title } = req.body;
+      const user_id = req.user._id;
+
+      if (!category_id || !description || !title) {
+            return res.status(400).json({
+                  message: "Please enter all the required fields.",
+                  status: false,
+            });
+      }
+
+      // const videoPath = video_names_path[0];
+      // const thumbnailPath = thumbnail_names_path[0];
+
+      const video = await Video.create({
+            //video_name: `${user_id}/${videoPath}`,
+            category_id,
+            title,
+            //thumbnail_name: `${user_id}/${thumbnailPath}`,
+            description,
+            user_id,
+            // filePath: req.files["video"][0].path, // Assuming video is the name of your video field
+      });
+
+      // if (video) {
+      //       // Increment video_count in AdminDashboard
+      //       try {
+      //             const adminDashboard = await AdminDashboard.findOne();
+      //             adminDashboard.video_count++;
+      //             await adminDashboard.save();
+      //       } catch (error) {
+      //             console.error("Error incrementing video count:", error);
+      //       }
+      // }
+
+      if (video) {
+            res.status(201).json({
+                  _id: video._id,
+                  //video_name: video.video_name,
+                  category_id: video.category_id,
+                  title: video.title,
+                  //thumbnail_name: video.thumbnail_name,
+                  description: video.description,
+                  user_id: video.user_id,
+                  status: true,
+            });
+      } else {
+            res.status(200).json({
+                  message: "Video Not Uploaded.",
+                  status: false,
+            });
+      }
+});
+//});
+
+const getVideoLikeCount = async (videoId) => {
+      try {
+            const videoLike = await VideoLike.findOne(
+                  { video_id: videoId },
+                  { count: 1, _id: 0 }
+            );
+            return videoLike ? videoLike.count : 0;
+      } catch (error) {
+            throw new Error("Error fetching video like count");
+      }
+};
+
+const getPaginatedVideos = asyncHandler(async (req, res) => {
+      const page = parseInt(req.params.page) || 1;
+      const limit = parseInt(req.query.limit) || 5;
+      const startIndex = (page - 1) * limit;
+
+      try {
+            // Use Mongoose to fetch paginated videos from the database
+            const paginatedVideos = await Video.find()
+                  .skip(startIndex)
+                  .limit(limit)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic", // Adjust these fields based on your User schema
+                  })
+                  .populate({
+                        path: "category_id",
+                        select: "category_name", // Adjust this field based on your Category schema
+                  });
+
+            const totalVideos = await Video.countDocuments();
+            const hasMore = startIndex + paginatedVideos.length < totalVideos;
+
+            if (paginatedVideos.length === 0) {
+                  return res.json({
+                        message: "Video Not Found",
+                        status: true,
+                  });
+            }
+
+            // Transform and exclude specific fields in the response
+            const transformedVideos = [];
+            const token = req.header("Authorization");
+
+            for (const video of paginatedVideos) {
+                  const { video_name, updatedAt, __v, ...response } =
+                        video._doc;
+
+                  let like_status = "No"; // Move the declaration inside the loop
+                  let subscribe_status = "No"; // Move the declaration inside the loop
+                  let like_count = 0;
+                  // Get the like count for each video
+                  const videoLikeCount = await VideoLike.find({
+                        video_id: video._id,
+                  });
+
+                  for (const videoLikeCountUpdate of videoLikeCount) {
+                        like_count = videoLikeCountUpdate.count; // Fix the assignment here, use '=' instead of ':'
+                  }
+                  const videoLikeData = await VideoLike.findOne({
+                        video_id: video._id,
+                  });
+
+                  const updatedUser = {
+                        ...video.user_id._doc,
+                        pic: `${process.env.BASE_URL}${video.user_id.pic}`,
+                  };
+
+                  if (token) {
+                        // Check if the user has liked the current post
+                        const isLiked = await VideoLike.exists({
+                              video_id: video._id,
+                              user_ids: req.user._id,
+                        });
+
+                        // Set like_status based on whether the user has liked the post
+                        like_status = isLiked ? "Yes" : "No";
+
+                        // Check if the user has subscribed to the author
+                        const isSubscribed = await Subscribes.exists({
+                              my_id: video.user_id?._id,
+                              subscriber_id: req.user?._id,
+                        });
+
+                        // Set subscribe_status based on whether the user has subscribed to the author
+                        subscribe_status = isSubscribed ? "Yes" : "No";
+                  }
+
+                  transformedVideos.push({
+                        ...response,
+                        video_url: `${process.env.BASE_URL}api/video/streamVideo/${video._id}`,
+                        thumbnail_name: `${process.env.BASE_URL}public/video/${video.thumbnail_name}`,
+                        user_id: updatedUser,
+                        like_count,
+                        like_status, // Include like_status
+                        subscribe_status, // Include subscribe_status
+                  });
+            }
+
+            res.json({
+                  page,
+                  limit,
+                  status: true,
+                  data: transformedVideos,
+                  hasMore,
+            });
+      } catch (error) {
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  error: error.message,
+                  status: false,
+            });
+      }
+});
+
+const streamVideo = asyncHandler(async (req, res) => {
+      const videoId = req.params.videoId;
+
+      const video = await Video.findById(videoId);
+
+      if (!video) {
+            return res.status(404).json({
+                  message: "Video not found",
+                  status: false,
+            });
+      }
+
+      const fileName = video.video_name;
+      const filePath = path.join("public", "video", fileName);
+
+      const stat = fs.statSync(filePath);
+      const fileSize = stat.size;
+      const range = req.headers.range;
+
+      if (range) {
+            const parts = range.replace(/bytes=/, "").split("-");
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+            const chunksize = end - start + 1;
+            const fileStream = fs.createReadStream(filePath, { start, end });
+
+            const headers = {
+                  "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+                  "Accept-Ranges": "bytes",
+                  "Content-Length": chunksize,
+                  "Content-Type": "video/mp4",
+            };
+
+            res.writeHead(206, headers);
+            fileStream.pipe(res);
+      } else {
+            const headers = {
+                  "Content-Length": fileSize,
+                  "Content-Type": "video/mp4",
+            };
+
+            res.writeHead(200, headers);
+            fs.createReadStream(filePath).pipe(res);
+      }
+});
+
+const updateVideoLike = asyncHandler(async (req, res) => {
+      try {
+            const user_id = req.user._id;
+            const { video_id, count } = req.body;
+
+            // Ensure video_id is a valid ObjectId
+            if (!mongoose.Types.ObjectId.isValid(video_id)) {
+                  return res.status(200).json({
+                        message: "Invalid video_id format.",
+                        status: false,
+                  });
+            }
+
+            // Convert the video_id to ObjectId
+            const objectIdVideoId = mongoose.Types.ObjectId(video_id);
+
+            // Find the video in the VideoLike collection
+            let existingLike = await VideoLike.findOne({
+                  video_id: objectIdVideoId,
+            });
+
+            if (existingLike) {
+                  // Check if the user_id is already in the user_ids array
+                  const userIndex = existingLike.user_ids.indexOf(user_id);
+
+                  if (count === "1" && userIndex === -1) {
+                        // Increment count and add user_id if count is 1 and user_id is not already present
+                        existingLike.count += 1;
+                        existingLike.user_ids.push(user_id);
+                  } else if (count === "0" && userIndex !== -1) {
+                        // Decrement count and remove user_id if count is 0 and user_id is present
+                        existingLike.count -= 1;
+                        existingLike.user_ids.splice(userIndex, 1);
+                  }
+
+                  // Save the updated record
+                  existingLike = await existingLike.save();
+
+                  res.status(200).json({
+                        message: "Video like updated successfully.",
+                        status: true,
+                        data: existingLike,
+                  });
+            } else {
+                  // Create a new record if the video is not already in the VideoLike collection
+                  const newLike = new VideoLike({
+                        user_ids: [user_id],
+                        video_id: objectIdVideoId,
+                        count: count === "1" ? 1 : 0, // Set count based on input
+                  });
+
+                  const savedLike = await newLike.save();
+
+                  res.status(201).json({
+                        message: "Video like created successfully.",
+                        status: true,
+                        data: savedLike,
+                  });
+            }
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
+const addVideoComment = asyncHandler(async (req, res) => {
+      try {
+            // Extract user_id from headers
+            const user_id = req.user._id;
+            const { video_id, comment } = req.body;
+
+            // Ensure video_id is a valid ObjectId
+            if (!mongoose.Types.ObjectId.isValid(video_id)) {
+                  return res.status(200).json({
+                        message: "Invalid video_id format.",
+                        status: false,
+                  });
+            }
+
+            // Convert video_id to ObjectId
+            const objectIdVideoId = mongoose.Types.ObjectId(video_id);
+
+            // Create a new VideoComment
+            const newComment = new VideoComment({
+                  user_id: mongoose.Types.ObjectId(user_id),
+                  video_id: objectIdVideoId,
+                  comment,
+            });
+
+            // Save the comment
+            const savedComment = await newComment.save();
+
+            await Video.findByIdAndUpdate(
+                  objectIdVideoId,
+                  { $inc: { comment_count: 1 } }, // Increment comment_count by 1
+                  { new: true } // Return the updated document
+            );
+
+            res.status(201).json({
+                  message: "Video comment added successfully.",
+                  status: true,
+                  data: savedComment,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
+const getVideoComments = asyncHandler(async (req, res) => {
+      const { videoId } = req.params;
+
+      try {
+            // Use Mongoose to fetch video comments from the database
+            const videoComments = await VideoComment.find({ video_id: videoId })
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic", // Adjust these fields based on your User schema
+                  })
+                  .exec();
+
+            // Check if there are no comments
+
+            // Fetch video details
+            const videoDetails = await Video.findOne({ _id: videoId })
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic", // Adjust these fields based on your User schema
+                  })
+                  .populate({
+                        path: "category_id",
+                        select: "category_name", // Adjust this field based on your Category schema
+                  })
+                  .exec();
+            const likeCount = await getVideoLikeCount(videoId);
+            const token = req.header("Authorization");
+
+            let like_status = "No";
+            let subscribe_status = "No";
+
+            // Add the base URL to the pic field in video details
+            const updatedVideoDetails = {
+                  ...videoDetails._doc,
+                  user_id: {
+                        ...videoDetails.user_id._doc,
+                        pic: `${process.env.BASE_URL}${videoDetails.user_id.pic}`,
+                  },
+                  like_count: likeCount,
+                  thumbnail_name: `${process.env.BASE_URL}${videoDetails.thumbnail_name}`,
+                  video_url: `${process.env.BASE_URL}api/video/streamVideo/${videoDetails._id}`,
+                  like_status, // Include like_status
+                  subscribe_status, // Include subscribe_status
+            };
+
+            if (token) {
+                  // Check if the user has liked the current post
+                  const isLiked = await VideoLike.exists({
+                        video_id: videoId,
+                        user_ids: req.user._id,
+                  });
+
+                  // Set like_status based on whether the user has liked the post
+                  updatedVideoDetails.like_status = isLiked ? "Yes" : "No";
+
+                  const isSubscribe = await Subscribes.exists({
+                        my_id: videoDetails.user_id._id,
+                        subscriber_id: req.user._id,
+                  });
+
+                  // Set subscribe_status based on whether the user has subscribed to the author
+                  updatedVideoDetails.subscribe_status = isSubscribe
+                        ? "Yes"
+                        : "No";
+            }
+
+            // Add the base URL to the pic field in comments
+            const updatedVideoComments = videoComments.map((comment) => ({
+                  ...comment._doc,
+                  user_id: {
+                        ...comment.user_id._doc,
+                        pic: `${process.env.BASE_URL}${comment.user_id.pic}`,
+                  },
+            }));
+
+            if (!videoComments || videoComments.length === 0) {
+                  return res.json({
+                        message: "No Comments Available.",
+                        status: true,
+                        data: updatedVideoDetails,
+                        comments: updatedVideoComments,
+                  });
+            }
+            res.json({
+                  message: "Video comments fetched successfully.",
+                  status: true,
+                  data: updatedVideoDetails,
+                  comments: updatedVideoComments,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
+const updateVideoViewCount = asyncHandler(async (req, res) => {
+      try {
+            // Extract video_id from the request body
+            const { video_id } = req.body;
+
+            // Ensure video_id is a valid ObjectId
+            if (!mongoose.Types.ObjectId.isValid(video_id)) {
+                  return res.status(200).json({
+                        message: "Invalid video_id format.",
+                        status: false,
+                  });
+            }
+
+            // Convert video_id to ObjectId
+            const objectIdVideoId = mongoose.Types.ObjectId(video_id);
+
+            // Update the view count in the Video model
+            const updatedVideo = await Video.findByIdAndUpdate(
+                  objectIdVideoId,
+                  { $inc: { view_count: 1 } }, // Increment view_count by 1
+                  { new: true } // Return the updated document
+            );
+
+            if (!updatedVideo) {
+                  return res.status(404).json({
+                        message: "Video not found.",
+                        status: false,
+                  });
+            }
+
+            res.status(200).json({
+                  message: "View count updated successfully.",
+                  status: true,
+                  data: updatedVideo,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
+const getMyVideos = asyncHandler(async (req, res) => {
+      const user_id = req.user._id; // Assuming you have user authentication middleware
+      const page = parseInt(req.params.page) || 1;
+      const limit = parseInt(req.query.limit) || 5;
+      const startIndex = (page - 1) * limit;
+
+      try {
+            // Fetch videos from the database for the given user_id with pagination
+            const videos = await Video.find({ user_id })
+                  .skip(startIndex)
+                  .limit(limit)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic", // Adjust these fields based on your User schema
+                  })
+                  .populate({
+                        path: "category_id",
+                        select: "category_name", // Adjust this field based on your Category schema
+                  });
+
+            // Check if there are no videos
+            if (!videos || videos.length === 0) {
+                  return res.json({
+                        message: "No Video Available.",
+                        status: true,
+                        data: [],
+                  });
+            }
+
+            // Add the base URL to the pic field in user details
+            const updatedVideos = await Promise.all(
+                  videos.map(async (video) => {
+                        let like_status = "No"; // Move the declaration inside the loop
+                        let subscribe_status = "No"; // Move the declaration inside the loop
+                        const likeCount = await getVideoLikeCount(video._id);
+                        // Check if the user has liked the current post
+                        const isLiked = await VideoLike.exists({
+                              post_timeline_id: video._id,
+                              user_ids: req.user._id,
+                        });
+
+                        // Set like_status based on whether the user has liked the post
+                        like_status = isLiked ? "Yes" : "No";
+
+                        const issubscribe = await Subscribes.exists({
+                              my_id: video.user_id._id,
+                              subscriber_id: req.user._id,
+                        });
+
+                        // Set subscribe_status based on whether the user has subscribed to the author
+                        subscribe_status = issubscribe ? "Yes" : "No";
+
+                        return {
+                              ...video._doc,
+                              user_id: {
+                                    ...video.user_id._doc,
+                                    pic: `${process.env.BASE_URL}${video.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
+                              },
+                              like_count: likeCount,
+                              like_status: like_status, // Add like_status to the response
+                              subscribe_status: subscribe_status, // Add subscribe_status to the response
+                              video_url: `${process.env.BASE_URL}api/video/streamVideo/${video._id}`,
+                              thumbnail_name: `${process.env.BASE_URL}public/video/${video.thumbnail_name}`,
+                        };
+                  })
+            );
+
+            res.json({
+                  message: "Videos fetched successfully.",
+                  status: true,
+                  data: updatedVideos,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
+const getUserVideos = asyncHandler(async (req, res) => {
+      const { user_id, page } = req.params;
+      const limit = parseInt(req.query.limit) || 5;
+      const startIndex = (page - 1) * limit;
+      try {
+            // Fetch videos from the database for the given user_id with pagination
+            const videos = await Video.find({ user_id })
+                  .skip(startIndex)
+                  .limit(limit)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic",
+                  })
+                  .populate({
+                        path: "category_id",
+                        select: "category_name",
+                  });
+
+            const userVideoCount = await Video.countDocuments({ user_id });
+
+            const hasMore = startIndex + videos.length < userVideoCount;
+            // Check if there are no videos
+            if (!videos || videos.length === 0) {
+                  return res.json({
+                        message: "No Video Available.",
+                        status: true,
+                        data: [],
+                  });
+            }
+            const token = req.header("Authorization");
+            // Add the base URL to the pic field in user details
+            const updatedVideos = await Promise.all(
+                  videos.map(async (video) => {
+                        let like_status = "No"; // Move the declaration inside the loop
+                        let subscribe_status = "No"; // Move the declaration inside the loop
+                        const likeCount = await getVideoLikeCount(video._id);
+
+                        if (token) {
+                              const isLiked = await VideoLike.exists({
+                                    post_timeline_id: video._id,
+                                    user_ids: req.user._id,
+                              });
+                              like_status = isLiked ? "Yes" : "No";
+                              const issubscribe = await Subscribes.exists({
+                                    my_id: video.user_id._id,
+                                    subscriber_id: req.user._id,
+                              });
+                              subscribe_status = issubscribe ? "Yes" : "No";
+                        }
+                        return {
+                              ...video._doc,
+                              user_id: {
+                                    ...video.user_id._doc,
+                                    pic: `${process.env.BASE_URL}${video.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
+                              },
+                              like_count: likeCount,
+                              like_status: like_status, // Add like_status to the response
+                              subscribe_status: subscribe_status, // Add subscribe_status to the response
+                              video_url: `${process.env.BASE_URL}api/video/streamVideo/${video._id}`,
+                              thumbnail_name: `${process.env.BASE_URL}public/video/${video.thumbnail_name}`,
+                        };
+                  })
+            );
+
+            res.json({
+                  message: "Videos fetched successfully.",
+                  status: true,
+                  data: updatedVideos,
+                  hasMore,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
+const getVideosThumbnails = asyncHandler(async (req, res) => {
+      try {
+            const limit = parseInt(req.params.limit, 10);
+
+            // Fetch videos based on the limit
+            const videos = await Video.find()
+                  .limit(limit)
+                  .select("thumbnail_name title");
+
+            if (!videos) {
+                  return res.status(404).json({
+                        message: "Videos not found.",
+                        status: false,
+                  });
+            }
+
+            // Construct full URLs for videos
+            const videoData = videos.map((video) => ({
+                  id: video._id, // Assuming you have an _id field in your Video model
+                  thumbnail_url: `${process.env.BASE_URL}public/video/${video.thumbnail_name}`,
+                  title: video.title, // Replace base_url with your actual base URL
+            }));
+
+            res.status(200).json({
+                  data: videoData,
+                  status: true,
+            });
+      } catch (error) {
+            console.error("Error fetching videos:", error);
+            res.status(500).json({
+                  message: "Internal Server Error.",
+                  status: false,
+            });
+      }
+});
+
+const deleteVideo = asyncHandler(async (req, res) => {
+      try {
+            // Extract user_id from headers
+            const user_id = req.user._id;
+            const { video_id } = req.body;
+
+            // Ensure video_id is a valid ObjectId
+            if (!mongoose.Types.ObjectId.isValid(video_id)) {
+                  return res.status(200).json({
+                        message: "Invalid video_id format.",
+                        status: false,
+                  });
+            }
+
+            // Convert video_id to ObjectId
+            const objectIdVideoId = mongoose.Types.ObjectId(video_id);
+
+            // Check if the user has the right to delete the video
+            const video = await Video.findOne({
+                  _id: objectIdVideoId,
+                  user_id,
+            });
+
+            if (!video) {
+                  return res.status(403).json({
+                        message: "You do not have permission to delete this video.",
+                        status: false,
+                  });
+            }
+
+            // Get the video details
+            const videoDetails = await Video.findById(objectIdVideoId);
+
+            // Delete the video document from the database
+            await Video.findByIdAndDelete(objectIdVideoId);
+
+            // Delete the video file
+            const videoPath = path.join(
+                  `public/video/${videoDetails.video_name}`
+            );
+            fs.unlinkSync(videoPath); // This will delete the file
+
+            // Delete the user's video folder if it's empty
+            const userFolderPath = path.join(`public/video/${user_id}`);
+            const filesInUserFolder = fs.readdirSync(userFolderPath);
+            if (filesInUserFolder.length === 0) {
+                  fs.rmdirSync(userFolderPath); // This will delete the folder if it's empty
+            }
+
+            await AdminDashboard.updateOne(
+                  {
+                        /* Your condition to identify the relevant row in admindashboards */
+                  },
+                  { $inc: { video_count: -1 } }
+            );
+
+            // Delete video comments and likes
+            await VideoComment.deleteMany({ video_id: objectIdVideoId });
+            await VideoLike.deleteMany({ video_id: objectIdVideoId });
+
+            res.status(200).json({
+                  message: "Video deleted successfully.",
+                  status: true,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+module.exports = {
+      uploadVideo,
+      getPaginatedVideos,
+      streamVideo,
+      updateVideoLike,
+      addVideoComment,
+      updateVideoViewCount,
+      getVideoComments,
+      getMyVideos,
+      deleteVideo,
+      getVideosThumbnails,
+      getUserVideos,
+};
