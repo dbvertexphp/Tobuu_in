@@ -7,54 +7,16 @@ const Subscribes = require("../models/subscribeModel.js");
 const multer = require("multer");
 const path = require("path");
 const { AdminDashboard } = require("../models/userModel.js");
+const {
+      getSignedUrlCommandVideo,
+      PutObjectVideo,
+      PutObjectVideothumbnail,
+} = require("../config/aws-s3.js");
 require("dotenv").config();
 
-const video_names_path = [];
-const thumbnail_names_path = [];
-
-const storage = multer.diskStorage({
-      destination: (req, file, cb) => {
-            const userId = req.user._id;
-            const uploadPath = `public/video/${userId}`;
-
-            // Check if the directory exists, create it if not
-            if (!fs.existsSync(uploadPath)) {
-                  fs.mkdirSync(uploadPath, { recursive: true });
-            }
-
-            cb(null, uploadPath);
-      },
-      filename: (req, file, cb) => {
-            const ext = path.extname(file.originalname);
-            const uniqueSuffix =
-                  Date.now() + "-" + Math.round(Math.random() * 1e9);
-            const fileName = file.fieldname + "-" + uniqueSuffix + ext;
-
-            if (file.fieldname === "video") {
-                  video_names_path[0] = fileName;
-            } else if (file.fieldname === "thumbnail") {
-                  thumbnail_names_path[0] = fileName;
-            }
-
-            cb(null, fileName);
-      },
-});
-
-const upload = multer({ storage: storage });
-
 const uploadVideo = asyncHandler(async (req, res) => {
-      // upload.fields([
-      //       { name: "video", maxCount: 1 },
-      //       { name: "thumbnail", maxCount: 1 },
-      // ])(req, res, async (err) => {
-      //       if (err) {
-      //             return res.status(400).json({
-      //                   message: "Error uploading file.",
-      //                   status: false,
-      //             });
-      //       }
-
-      const { category_id, description, title } = req.body;
+      const { category_id, description, title, video_key, thumbnail_key } =
+            req.body;
       const user_id = req.user._id;
 
       if (!category_id || !description || !title) {
@@ -64,37 +26,22 @@ const uploadVideo = asyncHandler(async (req, res) => {
             });
       }
 
-      // const videoPath = video_names_path[0];
-      // const thumbnailPath = thumbnail_names_path[0];
-
       const video = await Video.create({
-            //video_name: `${user_id}/${videoPath}`,
+            video_name: video_key,
             category_id,
             title,
-            //thumbnail_name: `${user_id}/${thumbnailPath}`,
+            thumbnail_name: thumbnail_key,
             description,
             user_id,
-            // filePath: req.files["video"][0].path, // Assuming video is the name of your video field
       });
-
-      // if (video) {
-      //       // Increment video_count in AdminDashboard
-      //       try {
-      //             const adminDashboard = await AdminDashboard.findOne();
-      //             adminDashboard.video_count++;
-      //             await adminDashboard.save();
-      //       } catch (error) {
-      //             console.error("Error incrementing video count:", error);
-      //       }
-      // }
 
       if (video) {
             res.status(201).json({
                   _id: video._id,
-                  //video_name: video.video_name,
+                  video_name: video.video_name,
                   category_id: video.category_id,
                   title: video.title,
-                  //thumbnail_name: video.thumbnail_name,
+                  thumbnail_name: video.thumbnail_name,
                   description: video.description,
                   user_id: video.user_id,
                   status: true,
@@ -106,7 +53,6 @@ const uploadVideo = asyncHandler(async (req, res) => {
             });
       }
 });
-//});
 
 const getVideoLikeCount = async (videoId) => {
       try {
@@ -196,11 +142,16 @@ const getPaginatedVideos = asyncHandler(async (req, res) => {
                         // Set subscribe_status based on whether the user has subscribed to the author
                         subscribe_status = isSubscribed ? "Yes" : "No";
                   }
-
+                  const thumbnail_name_url = await getSignedUrlCommandVideo(
+                        video.thumbnail_name
+                  );
+                  const video_name_url = await getSignedUrlCommandVideo(
+                        video.video_name
+                  );
                   transformedVideos.push({
                         ...response,
-                        video_url: `${process.env.BASE_URL}api/video/streamVideo/${video._id}`,
-                        thumbnail_name: `${process.env.BASE_URL}public/video/${video.thumbnail_name}`,
+                        video_url: video_name_url,
+                        thumbnail_name: thumbnail_name_url,
                         user_id: updatedUser,
                         like_count,
                         like_status, // Include like_status
@@ -237,8 +188,8 @@ const streamVideo = asyncHandler(async (req, res) => {
       }
 
       const fileName = video.video_name;
-      const filePath = path.join("public", "video", fileName);
-
+      const filePath = await getSignedUrlCommandVideo(fileName);
+      console.log("Signed URL:", filePath);
       const stat = fs.statSync(filePath);
       const fileSize = stat.size;
       const range = req.headers.range;
@@ -796,6 +747,26 @@ const deleteVideo = asyncHandler(async (req, res) => {
             });
       }
 });
+
+const getVideoUploadUrlS3 = asyncHandler(async (req, res) => {
+      const user_id = req.user._id;
+      const randomFilenameVideo = `Video-${Math.random()
+            .toString(36)
+            .substring(2)}`;
+      const randomFilenameThumbnail = `Thumbnail-${Math.random()
+            .toString(36)
+            .substring(2)}`;
+      const videoget_url = await PutObjectVideo(user_id, randomFilenameVideo);
+      const thumbnailget_url = await PutObjectVideothumbnail(
+            user_id,
+            randomFilenameThumbnail
+      );
+
+      return res.status(400).json({
+            message: { videoget_url, thumbnailget_url },
+            status: false,
+      });
+});
 module.exports = {
       uploadVideo,
       getPaginatedVideos,
@@ -808,4 +779,5 @@ module.exports = {
       deleteVideo,
       getVideosThumbnails,
       getUserVideos,
+      getVideoUploadUrlS3,
 };

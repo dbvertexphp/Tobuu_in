@@ -11,6 +11,7 @@ const {
       deleteVideo,
       getVideosThumbnails,
       getUserVideos,
+      getVideoUploadUrlS3
 } = require("../controllers/videoControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
@@ -28,5 +29,6 @@ videoRoutes.route("/streamVideo/:videoId").get(streamVideo);
 videoRoutes.route("/getVideosThumbnails/:limit").get(getVideosThumbnails);
 videoRoutes.route("/getUserVideos/:user_id/:page").get(commonProtect, getUserVideos);
 videoRoutes.route("/getMyVideos/:limit").get(protect, getMyVideos);
+videoRoutes.route("/getVideoUploadUrlS3").get(protect, getVideoUploadUrlS3);
 
 module.exports = { videoRoutes };

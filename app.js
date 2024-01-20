@@ -2,7 +2,7 @@ const express = require("express");
 const connectDB = require("./config/db.js");
 const createSocketIO = require("./config/socket_io.js");
 const dotenv = require("dotenv");
-const cookieParser = require('cookie-parser');
+const cookieParser = require("cookie-parser");
 // --------------------- Routes -------------------------------
 const { userRoutes } = require("./routes/userRoutes.js");
 const { chatRoutes } = require("./routes/chatRoutes.js");
@@ -18,20 +18,24 @@ const { timelineRoutes } = require("./routes/timelineRoutes.js");
 const { commanRoutes } = require("./routes/commanRoutes.js");
 // --------------------- Routes -------------------------------
 const { notFound, errorHandler } = require("./middleware/errorMiddleware.js");
-const cors = require('cors');
+const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
 
 connectDB();
 const app = express();
 app.use(cookieParser());
-app.use('/public', express.static('public'));
-app.use('/uploads', express.static('uploads'));
+const __dirname1 = path.resolve();
+app.use(express.static(path.join(__dirname1, "")));
+app.use("/public", express.static("public"));
+app.use("/uploads", express.static("uploads"));
 app.use(express.json()); // to accept JSON data
 app.use(cors());
-app.use(cors({
-  origin: '*', // Replace with your React app's origin
-}));
+app.use(
+      cors({
+            origin: "*", // Replace with your React app's origin
+      })
+);
 
 // --------------------------Routes------------------------------
 
@@ -51,18 +55,16 @@ app.use("/api/comman", commanRoutes);
 
 // --------------------------deployment------------------------------
 
-const __dirname1 = path.resolve();
-
 if (process.env.NODE_ENV == "production") {
-  app.use(express.static(path.join(__dirname1, "/view")));
+      app.use(express.static(path.join(__dirname1, "/view")));
 
-  app.get("*", (req, res) =>
-    res.sendFile(path.resolve(__dirname1, "view", "index.html"))
-  );
+      app.get("*", (req, res) =>
+            res.sendFile(path.resolve(__dirname1, "view", "index.html"))
+      );
 } else {
-  app.get("/", (req, res) => {
-    res.send("API is running..");
-  });
+      app.get("/", (req, res) => {
+            res.send("API is running..");
+      });
 }
 
 // --------------------------deployment------------------------------
@@ -75,7 +77,7 @@ const PORT = process.env.PORT;
 const BASE_URL = process.env.BASE_URL;
 
 const server = app.listen(PORT, () => {
-  console.log(`Server running on PORT ${PORT}...`);
-  console.log(`Base URL: ${BASE_URL}`);
+      console.log(`Server running on PORT ${PORT}...`);
+      console.log(`Base URL: ${BASE_URL}`);
 });
 const io = createSocketIO(server);
