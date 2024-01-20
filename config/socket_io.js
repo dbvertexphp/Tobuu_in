@@ -15,7 +15,7 @@ const createSocketIO = (server) => {
       });
 
       io.on("connection", (socket) => {
-            //console.log("Connected to socket.io");
+            console.log("Connected to socket.io");
 
             socket.on("setup", (userData) => {
                   console.log("connected");
@@ -30,21 +30,24 @@ const createSocketIO = (server) => {
 
             socket.on("typing", (room) => {
                   socket.in(room).emit("typing");
+                  console.log("typing");
             });
 
             socket.on("stop typing", (room) => {
                   socket.in(room).emit("stop typing");
+                   console.log("stop typing");
             });
 
             socket.on("block Status", (data) => {
                   const { chatId, status, userId } = data;
                   socket.in(chatId).emit("block Status", { status, userId });
+                   console.log("block Status");
             });
 
             socket.on("new message", (newMessageRecieved) => {
                   // Access the chat property from the response
                   var chat = newMessageRecieved.response.chat;
-
+                     console.log("new message" + newMessageRecieved);
                   // Check if chat and users are defined
                   if (!chat || !chat.users) {
                         return console.log("Chat or chat.users not defined");
