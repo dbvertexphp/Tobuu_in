@@ -19,7 +19,9 @@ const {
       getBankDetails,
       websiteNotificationToken,
       NotificationList,
-      ForgetresendOTP
+      ForgetresendOTP,
+      getProfilePicUploadUrlS3,
+      profilePicKey
 } = require("../controllers/userControllers.js");
 const {
       CreateCalendar,
@@ -62,6 +64,8 @@ userRoutes.route("/addReview").post(protect, addReview);
 userRoutes.route("/Watch_time_update").post(protect, Watch_time_update);
 userRoutes.route("/websiteNotificationToken").post(protect, websiteNotificationToken);
 userRoutes.route("/NotificationList/:limit").get(protect, NotificationList);
+userRoutes.route("/getProfilePicUploadUrlS3").get(protect, getProfilePicUploadUrlS3);
+userRoutes.route("/profilePicKey").post(protect, profilePicKey)
 
 /*------------- Calendar Routes --------------------- */
 userRoutes.route("/Createcalendar").post(protect, CreateCalendar);

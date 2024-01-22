@@ -96,7 +96,7 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
                         const updatedUser = job.user_id
                               ? {
                                       ...job.user_id._doc,
-                                      pic: `${process.env.BASE_URL}${job.user_id.pic}`,
+                                      pic: `${job.user_id.pic}`,
                                 }
                               : null;
 
@@ -222,7 +222,7 @@ const getAppliedJobs = asyncHandler(async (req, res) => {
                         user_id: {
                               first_name: job_id.user_id.first_name,
                               last_name: job_id.user_id.last_name,
-                              pic: `${process.env.BASE_URL}${job_id.user_id.pic}`, // Add the base URL to the pic field
+                              pic: `${job_id.user_id.pic}`, // Add the base URL to the pic field
                         },
                         description: job_id.description, // Include the job description
                         createdAt,
@@ -274,7 +274,7 @@ const getAppliedUsers = asyncHandler(async (req, res) => {
                               _id,
                               first_name,
                               last_name,
-                              pic: `${process.env.BASE_URL}${pic}`, // Add the base URL to the pic field
+                              pic: `${pic}`, // Add the base URL to the pic field
                         },
                   })
             );
@@ -343,7 +343,7 @@ const getMyJobs = asyncHandler(async (req, res) => {
                               user_id: {
                                     first_name: req.user.first_name,
                                     last_name: req.user.last_name,
-                                    pic: `${process.env.BASE_URL}${req.user.pic}`,
+                                    pic: `${req.user.pic}`,
                               },
                               applied_count: appliedUsersCount, // Add applied_count to the transformed job data
                         };

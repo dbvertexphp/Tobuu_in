@@ -2,11 +2,9 @@ const mongoose = require("mongoose");
 const moment = require("moment-timezone");
 
 const reelSchema = mongoose.Schema({
-      //reel_name: { type: String, trim: true },
-      reel_name: { type: String, default: "656827d4123fb80c910f650b/video-1703251642647-474226327.mp4" },
+      reel_name: { type: String, trim: true, required: true },
       title: { type: String },
-     // thumbnail_name: { type: String, trim: true },
-      thumbnail_name: { type: String, default: "656827d4123fb80c910f650b/thumbnail-1703251642918-25080956.jpg" },
+      thumbnail_name: { type: String, trim: true, required: true },
       user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       category_id: {
             type: mongoose.Schema.Types.ObjectId,

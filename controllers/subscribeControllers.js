@@ -136,7 +136,7 @@ const getSubscribes = asyncHandler(async (req, res) => {
                   return {
                         first_name: friend.first_name,
                         last_name: friend.last_name,
-                        pic: `${process.env.BASE_URL}${friend.pic}`, // Assuming pic is the path to the image
+                        pic: `${friend.pic}`, // Assuming pic is the path to the image
                         _id: friend._id,
                   };
             });
@@ -182,7 +182,7 @@ const getSubscriptionRequest = asyncHandler(async (req, res) => {
             // user_id mila toh uske corresponding my_id ka data nikale
             const userDataList = subscribesList.map((subscribes) => {
                   return {
-                        pic: `${process.env.BASE_URL}${subscribes.my_id.pic}`, // Assuming pic is the path to the image
+                        pic: `${subscribes.my_id.pic}`, // Assuming pic is the path to the image
                         _id: subscribes.my_id._id,
                         first_name: subscribes.my_id.first_name,
                         last_name: subscribes.my_id.last_name,

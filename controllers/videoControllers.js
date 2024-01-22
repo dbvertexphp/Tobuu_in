@@ -8,9 +8,10 @@ const multer = require("multer");
 const path = require("path");
 const { AdminDashboard } = require("../models/userModel.js");
 const {
-      getSignedUrlCommandVideo,
+      getSignedUrlS3,
       PutObjectVideo,
       PutObjectVideothumbnail,
+      DeleteSignedUrlS3,
 } = require("../config/aws-s3.js");
 require("dotenv").config();
 
@@ -103,34 +104,31 @@ const getPaginatedVideos = asyncHandler(async (req, res) => {
                   const { video_name, updatedAt, __v, ...response } =
                         video._doc;
 
-                  let like_status = "No"; // Move the declaration inside the loop
-                  let subscribe_status = "No"; // Move the declaration inside the loop
+                  let like_status = "No";
+                  let subscribe_status = "No";
                   let like_count = 0;
-                  // Get the like count for each video
-                  const videoLikeCount = await VideoLike.find({
-                        video_id: video._id,
-                  });
 
-                  for (const videoLikeCountUpdate of videoLikeCount) {
-                        like_count = videoLikeCountUpdate.count; // Fix the assignment here, use '=' instead of ':'
-                  }
-                  const videoLikeData = await VideoLike.findOne({
+                  // Get the total like count for each video
+                  const videoLikeCount = await VideoLike.findOne({
                         video_id: video._id,
-                  });
+                  }).select("count");
+
+                  if (videoLikeCount) {
+                        like_count = videoLikeCount.count;
+                  }
 
                   const updatedUser = {
                         ...video.user_id._doc,
-                        pic: `${process.env.BASE_URL}${video.user_id.pic}`,
+                        pic: `${video.user_id.pic}`,
                   };
 
                   if (token) {
-                        // Check if the user has liked the current post
+                        // Check if the user has liked the current video
                         const isLiked = await VideoLike.exists({
                               video_id: video._id,
                               user_ids: req.user._id,
                         });
 
-                        // Set like_status based on whether the user has liked the post
                         like_status = isLiked ? "Yes" : "No";
 
                         // Check if the user has subscribed to the author
@@ -139,25 +137,26 @@ const getPaginatedVideos = asyncHandler(async (req, res) => {
                               subscriber_id: req.user?._id,
                         });
 
-                        // Set subscribe_status based on whether the user has subscribed to the author
                         subscribe_status = isSubscribed ? "Yes" : "No";
                   }
-                  const thumbnail_name_url = await getSignedUrlCommandVideo(
+
+                  const thumbnail_name_url = await getSignedUrlS3(
                         video.thumbnail_name
                   );
-                  const video_name_url = await getSignedUrlCommandVideo(
-                        video.video_name
-                  );
+                  const video_name_url = await getSignedUrlS3(video.video_name);
+
                   transformedVideos.push({
                         ...response,
                         video_url: video_name_url,
                         thumbnail_name: thumbnail_name_url,
                         user_id: updatedUser,
                         like_count,
-                        like_status, // Include like_status
-                        subscribe_status, // Include subscribe_status
+                        like_status,
+                        subscribe_status,
                   });
             }
+
+            // Now transformedVideos contains the updated videos with like_count, like_status, and subscribe_status
 
             res.json({
                   page,
@@ -188,8 +187,7 @@ const streamVideo = asyncHandler(async (req, res) => {
       }
 
       const fileName = video.video_name;
-      const filePath = await getSignedUrlCommandVideo(fileName);
-      console.log("Signed URL:", filePath);
+      const filePath = await getSignedUrlS3(fileName);
       const stat = fs.statSync(filePath);
       const fileSize = stat.size;
       const range = req.headers.range;
@@ -373,11 +371,11 @@ const getVideoComments = asyncHandler(async (req, res) => {
                   ...videoDetails._doc,
                   user_id: {
                         ...videoDetails.user_id._doc,
-                        pic: `${process.env.BASE_URL}${videoDetails.user_id.pic}`,
+                        pic: `${videoDetails.user_id.pic}`,
                   },
                   like_count: likeCount,
-                  thumbnail_name: `${process.env.BASE_URL}${videoDetails.thumbnail_name}`,
-                  video_url: `${process.env.BASE_URL}api/video/streamVideo/${videoDetails._id}`,
+                  thumbnail_name: `${videoDetails.thumbnail_name}`,
+                  video_url: `api/video/streamVideo/${videoDetails._id}`,
                   like_status, // Include like_status
                   subscribe_status, // Include subscribe_status
             };
@@ -408,7 +406,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
                   ...comment._doc,
                   user_id: {
                         ...comment.user_id._doc,
-                        pic: `${process.env.BASE_URL}${comment.user_id.pic}`,
+                        pic: `${comment.user_id.pic}`,
                   },
             }));
 
@@ -535,13 +533,13 @@ const getMyVideos = asyncHandler(async (req, res) => {
                               ...video._doc,
                               user_id: {
                                     ...video.user_id._doc,
-                                    pic: `${process.env.BASE_URL}${video.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
+                                    pic: `${video.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
                               },
                               like_count: likeCount,
                               like_status: like_status, // Add like_status to the response
                               subscribe_status: subscribe_status, // Add subscribe_status to the response
-                              video_url: `${process.env.BASE_URL}api/video/streamVideo/${video._id}`,
-                              thumbnail_name: `${process.env.BASE_URL}public/video/${video.thumbnail_name}`,
+                              video_url: `api/video/streamVideo/${video._id}`,
+                              thumbnail_name: `public/video/${video.thumbnail_name}`,
                         };
                   })
             );
@@ -613,13 +611,13 @@ const getUserVideos = asyncHandler(async (req, res) => {
                               ...video._doc,
                               user_id: {
                                     ...video.user_id._doc,
-                                    pic: `${process.env.BASE_URL}${video.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
+                                    pic: `${video.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
                               },
                               like_count: likeCount,
                               like_status: like_status, // Add like_status to the response
                               subscribe_status: subscribe_status, // Add subscribe_status to the response
-                              video_url: `${process.env.BASE_URL}api/video/streamVideo/${video._id}`,
-                              thumbnail_name: `${process.env.BASE_URL}public/video/${video.thumbnail_name}`,
+                              video_url: `api/video/streamVideo/${video._id}`,
+                              thumbnail_name: `public/video/${video.thumbnail_name}`,
                         };
                   })
             );
@@ -646,9 +644,9 @@ const getVideosThumbnails = asyncHandler(async (req, res) => {
             // Fetch videos based on the limit
             const videos = await Video.find()
                   .limit(limit)
-                  .select("thumbnail_name title");
+                  .select("thumbnail_name video_name title"); // Added video_name to the select projection
 
-            if (!videos) {
+            if (!videos || videos.length === 0) {
                   return res.status(404).json({
                         message: "Videos not found.",
                         status: false,
@@ -656,14 +654,37 @@ const getVideosThumbnails = asyncHandler(async (req, res) => {
             }
 
             // Construct full URLs for videos
-            const videoData = videos.map((video) => ({
-                  id: video._id, // Assuming you have an _id field in your Video model
-                  thumbnail_url: `${process.env.BASE_URL}public/video/${video.thumbnail_name}`,
-                  title: video.title, // Replace base_url with your actual base URL
-            }));
+            const videoData = await Promise.all(
+                  videos.map(async (thumbnail) => {
+                        if (
+                              !thumbnail.thumbnail_name ||
+                              !thumbnail.video_name
+                        ) {
+                              // Handle the case where either thumbnail_name or video_name is missing
+                              return null;
+                        }
+
+                        const thumbnail_name_url = await getSignedUrlS3(
+                              thumbnail.thumbnail_name
+                        );
+                        const video_name_url = await getSignedUrlS3(
+                              thumbnail.video_name
+                        );
+
+                        return {
+                              id: thumbnail._id,
+                              title: thumbnail.title,
+                              thumbnail_url: thumbnail_name_url,
+                              video_url: video_name_url,
+                        };
+                  })
+            );
+
+            // Filter out null values
+            const validVideoData = videoData.filter((data) => data !== null);
 
             res.status(200).json({
-                  data: videoData,
+                  data: validVideoData,
                   status: true,
             });
       } catch (error) {
@@ -680,7 +701,6 @@ const deleteVideo = asyncHandler(async (req, res) => {
             // Extract user_id from headers
             const user_id = req.user._id;
             const { video_id } = req.body;
-
             // Ensure video_id is a valid ObjectId
             if (!mongoose.Types.ObjectId.isValid(video_id)) {
                   return res.status(200).json({
@@ -688,16 +708,22 @@ const deleteVideo = asyncHandler(async (req, res) => {
                         status: false,
                   });
             }
+            const videoDetails = await Video.findById(video_id);
+
+            if (!videoDetails) {
+                  return res.status(403).json({
+                        message: "Video Id Not Found.",
+                        status: false,
+                  });
+            }
 
             // Convert video_id to ObjectId
             const objectIdVideoId = mongoose.Types.ObjectId(video_id);
-
             // Check if the user has the right to delete the video
             const video = await Video.findOne({
                   _id: objectIdVideoId,
-                  user_id,
+                  user_id: user_id,
             });
-
             if (!video) {
                   return res.status(403).json({
                         message: "You do not have permission to delete this video.",
@@ -706,23 +732,24 @@ const deleteVideo = asyncHandler(async (req, res) => {
             }
 
             // Get the video details
-            const videoDetails = await Video.findById(objectIdVideoId);
 
             // Delete the video document from the database
             await Video.findByIdAndDelete(objectIdVideoId);
 
             // Delete the video file
-            const videoPath = path.join(
-                  `public/video/${videoDetails.video_name}`
+            const thumbnail_name_url = await DeleteSignedUrlS3(
+                  videoDetails.thumbnail_name
             );
-            fs.unlinkSync(videoPath); // This will delete the file
+            const video_name_url = await DeleteSignedUrlS3(
+                  videoDetails.video_name
+            );
 
-            // Delete the user's video folder if it's empty
-            const userFolderPath = path.join(`public/video/${user_id}`);
-            const filesInUserFolder = fs.readdirSync(userFolderPath);
-            if (filesInUserFolder.length === 0) {
-                  fs.rmdirSync(userFolderPath); // This will delete the folder if it's empty
-            }
+            const deleteThumbnailResponse = await fetch(thumbnail_name_url, {
+                  method: "DELETE",
+            });
+            const deleteVideoResponse = await fetch(video_name_url, {
+                  method: "DELETE",
+            });
 
             await AdminDashboard.updateOne(
                   {

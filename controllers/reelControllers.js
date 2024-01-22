@@ -7,54 +7,20 @@ const Subscribes = require("../models/subscribeModel.js");
 const multer = require("multer");
 const path = require("path");
 const { AdminDashboard } = require("../models/userModel.js");
+const {
+      getSignedUrlS3,
+      PutObjectReels,
+      PutObjectReelsthumbnail,
+      DeleteSignedUrlS3,
+} = require("../config/aws-s3.js");
 require("dotenv").config();
 
 const reel_names_path = [];
 const thumbnail_names_path = [];
 
-const storage = multer.diskStorage({
-      destination: (req, file, cb) => {
-            const userId = req.user._id;
-            const uploadPath = `public/reels/${userId}`;
-
-            // Check if the directory exists, create it if not
-            if (!fs.existsSync(uploadPath)) {
-                  fs.mkdirSync(uploadPath, { recursive: true });
-            }
-
-            cb(null, uploadPath);
-      },
-      filename: (req, file, cb) => {
-            const ext = path.extname(file.originalname);
-            const uniqueSuffix =
-                  Date.now() + "-" + Math.round(Math.random() * 1e9);
-            const fileName = file.fieldname + "-" + uniqueSuffix + ext;
-
-            if (file.fieldname === "reel") {
-                  reel_names_path[0] = fileName;
-            } else if (file.fieldname === "thumbnail") {
-                  thumbnail_names_path[0] = fileName;
-            }
-
-            cb(null, fileName);
-      },
-});
-
-const upload = multer({ storage: storage });
-
 const uploadReel = asyncHandler(async (req, res) => {
-      // upload.fields([
-      //       { name: "reel", maxCount: 1 },
-      //       { name: "thumbnail", maxCount: 1 },
-      // ])(req, res, async (err) => {
-      //       if (err) {
-      //             return res.status(400).json({
-      //                   message: "Error uploading file.",
-      //                   status: false,
-      //             });
-      //       }
-
-      const { category_id, description, title } = req.body;
+      const { category_id, description, title, reels_key, thumbnail_key } =
+            req.body;
       const user_id = req.user._id;
 
       if (!category_id || !description || !title) {
@@ -68,13 +34,12 @@ const uploadReel = asyncHandler(async (req, res) => {
       const thumbnailPath = thumbnail_names_path[0];
 
       const reel = await Reel.create({
-            //reel_name: `${user_id}/${reelPath}`,
+            reel_name: reels_key,
             category_id,
             title,
-            //thumbnail_name: `${user_id}/${thumbnailPath}`,
+            thumbnail_name: thumbnail_key,
             description,
             user_id,
-            //filePath: req.files["reel"][0].path, // Assuming 'reel' is the name of your reel field
       });
 
       if (reel) {
@@ -106,7 +71,6 @@ const uploadReel = asyncHandler(async (req, res) => {
             });
       }
 });
-//});
 
 const getReelLikeCount = async (reel_id) => {
       try {
@@ -173,7 +137,7 @@ const getPaginatedReel = asyncHandler(async (req, res) => {
                   // Add the base URL to the user's profile picture
                   const updatedUser = {
                         ...reel.user_id._doc,
-                        pic: `${process.env.BASE_URL}${reel.user_id.pic}`,
+                        pic: `${reel.user_id.pic}`,
                   };
 
                   if (token) {
@@ -195,11 +159,15 @@ const getPaginatedReel = asyncHandler(async (req, res) => {
                         // Set subscribe_status based on whether the user has subscribed to the author
                         subscribe_status = isSubscribed ? "Yes" : "No";
                   }
+                  const thumbnail_name_url = await getSignedUrlS3(
+                        reel.thumbnail_name
+                  );
+                  const video_name_url = await getSignedUrlS3(reel.reel_name);
 
                   transformedReels.push({
                         ...response,
-                        reel_url: `${process.env.BASE_URL}api/reel/streamReel/${reel._id}`,
-                        thumbnail_name: `${process.env.BASE_URL}public/reels/${reel.thumbnail_name}`,
+                        reel_url: video_name_url,
+                        thumbnail_name: thumbnail_name_url,
                         user_id: updatedUser,
                         like_count,
                         like_status,
@@ -425,7 +393,7 @@ const getReelComments = asyncHandler(async (req, res) => {
                   ...reelDetails._doc,
                   user_id: {
                         ...reelDetails.user_id._doc,
-                        pic: `${process.env.BASE_URL}${reelDetails.user_id.pic}`,
+                        pic: `${reelDetails.user_id.pic}`,
                   },
             };
 
@@ -434,7 +402,7 @@ const getReelComments = asyncHandler(async (req, res) => {
                   ...comment._doc,
                   user_id: {
                         ...comment.user_id._doc,
-                        pic: `${process.env.BASE_URL}${comment.user_id.pic}`,
+                        pic: `${comment.user_id.pic}`,
                   },
             }));
 
@@ -548,13 +516,13 @@ const getMyReels = asyncHandler(async (req, res) => {
                               ...reel._doc,
                               user_id: {
                                     ...reel.user_id._doc,
-                                    pic: `${process.env.BASE_URL}${reel.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
+                                    pic: `${reel.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
                               },
                               like_count: likeCount,
                               like_status: like_status, // Add like_status to the response
                               subscribe_status: subscribe_status, // Add subscribe_status to the response
                               reel_url: `${process.env.BASE_URL}api/reel/streamReel/${reel._id}`,
-                              thumbnail_name: `${process.env.BASE_URL}public/reels/${reel.thumbnail_name}`,
+                              thumbnail_name: `${reel.thumbnail_name}`,
                         };
                   })
             );
@@ -628,18 +596,24 @@ const getUserReels = asyncHandler(async (req, res) => {
                               // Set subscribe_status based on whether the user has subscribed to the author
                               subscribe_status = issubscribe ? "Yes" : "No";
                         }
+                        const thumbnail_name_url = await getSignedUrlS3(
+                              reel.thumbnail_name
+                        );
+                        const video_name_url = await getSignedUrlS3(
+                              reel.reel_name
+                        );
 
                         return {
                               ...reel._doc,
                               user_id: {
                                     ...reel.user_id._doc,
-                                    pic: `${process.env.BASE_URL}${reel.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
+                                    pic: `${reel.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
                               },
                               like_count: likeCount,
                               like_status: like_status,
                               subscribe_status: subscribe_status,
-                              reel_url: `${process.env.BASE_URL}api/reel/streamReel/${reel._id}`,
-                              thumbnail_name: `${process.env.BASE_URL}public/reels/${reel.thumbnail_name}`,
+                              reel_url: video_name_url,
+                              thumbnail_name: thumbnail_name_url,
                         };
                   })
             );
@@ -665,7 +639,7 @@ const getReelThumbnails = asyncHandler(async (req, res) => {
             // Fetch thumbnails based on the limit
             const thumbnails = await Reel.find()
                   .limit(limit)
-                  .select("thumbnail_name title");
+                  .select("thumbnail_name title reel_name"); // Added reel_name to the select projection
 
             if (!thumbnails || thumbnails.length === 0) {
                   return res.status(200).json({
@@ -675,12 +649,23 @@ const getReelThumbnails = asyncHandler(async (req, res) => {
             }
 
             // Construct full URLs for thumbnails
-            const thumbnailData = thumbnails.map((thumbnail) => ({
-                  id: thumbnail._id,
-                  title: thumbnail.title, // Assuming you have an _id field in your Reel model
-                  thumbnail_url: `${process.env.BASE_URL}public/reels/${thumbnail.thumbnail_name}`, // Replace base_url with your actual base URL
-                  reel_url: `${process.env.BASE_URL}api/reel/streamReel/${thumbnail._id}`,
-            }));
+            const thumbnailData = await Promise.all(
+                  thumbnails.map(async (thumbnail) => {
+                        const thumbnail_name_url = await getSignedUrlS3(
+                              thumbnail.thumbnail_name
+                        );
+                        const video_name_url = await getSignedUrlS3(
+                              thumbnail.reel_name
+                        );
+
+                        return {
+                              id: thumbnail._id,
+                              title: thumbnail.title,
+                              thumbnail_url: thumbnail_name_url,
+                              reel_url: video_name_url,
+                        };
+                  })
+            );
 
             res.status(200).json({
                   data: thumbnailData,
@@ -709,13 +694,21 @@ const deleteReel = asyncHandler(async (req, res) => {
                   });
             }
 
+            const reelDetails = await Reel.findById(reel_id);
+            if (!reelDetails) {
+                  return res.status(403).json({
+                        message: "Reels Id Not Found.",
+                        status: false,
+                  });
+            }
+
             // Convert reel_id to ObjectId
             const objectIdReelId = mongoose.Types.ObjectId(reel_id);
 
             // Check if the user has the right to delete the reel
             const reel = await Reel.findOne({
                   _id: objectIdReelId,
-                  user_id,
+                  user_id: user_id,
             });
 
             if (!reel) {
@@ -726,21 +719,24 @@ const deleteReel = asyncHandler(async (req, res) => {
             }
 
             // Get the reel details
-            const reelDetails = await Reel.findById(objectIdReelId);
 
             // Delete the reel document from the database
             await Reel.findByIdAndDelete(objectIdReelId);
 
             // Delete the reel file
-            const reelPath = path.join(`public/reels/${reelDetails.reel_name}`);
-            fs.unlinkSync(reelPath); // This will delete the file
+            const thumbnail_name_url = await DeleteSignedUrlS3(
+                  reelDetails.thumbnail_name
+            );
+            const reels_name_url = await DeleteSignedUrlS3(
+                  reelDetails.reel_name
+            );
 
-            // Delete the user's reel folder if it's empty
-            const userFolderPath = path.join(`public/reels/${user_id}`);
-            const filesInUserFolder = fs.readdirSync(userFolderPath);
-            if (filesInUserFolder.length === 0) {
-                  fs.rmdirSync(userFolderPath); // This will delete the folder if it's empty
-            }
+            const deleteThumbnailResponse = await fetch(thumbnail_name_url, {
+                  method: "DELETE",
+            });
+            const deleteVideoResponse = await fetch(reels_name_url, {
+                  method: "DELETE",
+            });
 
             await AdminDashboard.updateOne(
                   {
@@ -766,6 +762,26 @@ const deleteReel = asyncHandler(async (req, res) => {
       }
 });
 
+const getReelsUploadUrlS3 = asyncHandler(async (req, res) => {
+      const user_id = req.user._id;
+      const randomFilenameReels = `Reels-${Math.random()
+            .toString(36)
+            .substring(2)}`;
+      const randomFilenameThumbnail = `Thumbnail-${Math.random()
+            .toString(36)
+            .substring(2)}`;
+      const videoget_url = await PutObjectReels(user_id, randomFilenameReels);
+      const thumbnailget_url = await PutObjectReelsthumbnail(
+            user_id,
+            randomFilenameThumbnail
+      );
+
+      return res.status(400).json({
+            message: { videoget_url, thumbnailget_url },
+            status: false,
+      });
+});
+
 module.exports = {
       uploadReel,
       getPaginatedReel,
@@ -778,4 +794,5 @@ module.exports = {
       getReelThumbnails,
       getMyReels,
       getUserReels,
+      getReelsUploadUrlS3,
 };

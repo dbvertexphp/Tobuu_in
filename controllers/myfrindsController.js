@@ -182,7 +182,7 @@ const getMyFriends = asyncHandler(async (req, res) => {
                   return {
                         first_name: friend.first_name,
                         last_name: friend.last_name,
-                        pic: `${process.env.BASE_URL}${friend.pic}`, // Assuming pic is the path to the image
+                        pic: `${friend.pic}`, // Assuming pic is the path to the image
                         _id: friend._id,
                   };
             });
@@ -231,7 +231,7 @@ const getMyFriendsrequests = asyncHandler(async (req, res) => {
                   return {
                         first_name: friend.first_name,
                         last_name: friend.last_name,
-                        pic: `${process.env.BASE_URL}${friend.pic}`, // Assuming pic is the path to the image
+                        pic: `${friend.pic}`, // Assuming pic is the path to the image
                         _id: friend._id,
                   };
             });

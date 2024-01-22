@@ -59,9 +59,7 @@ const createNotification = async (sender_id, receiver_id, message, type) => {
             // Construct title, body, and imageUrl
             const title = receiverName;
             const body = `${senderName} ${message}`;
-            const imageUrl = `${process.env.BASE_URL}${
-                  senderUser.pic || "default-image.jpg"
-            }`;
+            const imageUrl = `${senderUser.pic || "default-image.jpg"}`;
 
             // Call sendFCMNotification with the constructed parameters
             await sendFCMNotification(

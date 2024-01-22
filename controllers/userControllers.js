@@ -2,7 +2,6 @@ const asyncHandler = require("express-async-handler");
 const cookie = require("cookie");
 const axios = require("axios");
 const moment = require("moment-timezone");
-
 const { generateToken, blacklistToken } = require("../config/generateToken.js");
 const {
       User,
@@ -19,6 +18,7 @@ const { Hire, HireStatus } = require("../models/hireModel.js");
 require("dotenv").config();
 const baseURL = process.env.BASE_URL;
 const { createNotification } = require("./notificationControllers.js");
+const { PutObjectProfilePic, getSignedUrlS3 } = require("../config/aws-s3.js");
 
 const getUsers = asyncHandler(async (req, res) => {
       const userId = req.user._id;
@@ -31,11 +31,9 @@ const getUsers = asyncHandler(async (req, res) => {
                         status: false,
                   });
             }
-
-            // Append BASE_URL to the pic field
             const updatedUser = {
                   ...user._doc,
-                  pic: baseURL + user.pic,
+                  pic: user.pic,
                   watch_time: convertSecondsToReadableTime(user.watch_time),
             };
 
@@ -110,7 +108,7 @@ const getUserView = asyncHandler(async (req, res) => {
             const updatedUser = {
                   Friend_status,
                   ...user._doc,
-                  pic: baseURL + user.pic,
+                  pic: user.pic,
                   watch_time: convertSecondsToReadableTime(user.watch_time),
             };
 
@@ -128,8 +126,6 @@ const getUserView = asyncHandler(async (req, res) => {
             });
       }
 });
-
-// Helper function to convert seconds to readable time format
 
 const registerUser = asyncHandler(async (req, res) => {
       const { first_name, last_name, email, mobile, username, password, dob } =
@@ -188,7 +184,7 @@ const registerUser = asyncHandler(async (req, res) => {
                   await adminDashboard.save();
             } catch (error) {}
       }
-
+      const getSignedUrl_pic = await getSignedUrlS3(user.pic);
       if (user) {
             res.status(201).json({
                   _id: user._id,
@@ -198,7 +194,7 @@ const registerUser = asyncHandler(async (req, res) => {
                   mobile: user.mobile,
                   username: user.username,
                   isAdmin: user.isAdmin,
-                  pic: baseURL + user.pic,
+                  pic: getSignedUrl_pic,
                   otp_verified: user.otp_verified,
                   token: generateToken(user._id),
                   status: true,
@@ -424,7 +420,7 @@ const profilePicUpload = asyncHandler(async (req, res) => {
             if (!user) {
                   return res.status(200).json({ message: "User not found" });
             }
-
+            const pic_name_url = await getSignedUrlS3(user.pic);
             // Update the user's profile picture (if uploaded)
             if (req.file) {
                   const uploadedFileName = req.file.filename;
@@ -433,13 +429,33 @@ const profilePicUpload = asyncHandler(async (req, res) => {
 
                   return res.status(200).json({
                         message: "Profile picture uploaded successfully",
-                        pic: baseURL + user.pic,
+                        pic: pic_name_url,
                         status: true,
                   });
             }
 
             return res.status(200).json({ message: "No file uploaded" });
       });
+});
+const profilePicKey = asyncHandler(async (req, res) => {
+      const userId = req.user._id; // Assuming you have user authentication middleware
+      const profilePicKeys = req.body.profilePicKey;
+      // Check if the user exists
+      const user = await User.findById(userId);
+
+      if (!user) {
+            return res.status(200).json({ message: "User not found" });
+      }
+      console.log(profilePicKeys);
+      // Update the user's profile picture (if uploaded)
+      user.pic = profilePicKeys;
+      await user.save();
+      return res.status(200).json({
+            message: "Profile picture uploaded successfully",
+            pic: user.pic,
+            status: true,
+      });
+      return res.status(200).json({ message: "No file uploaded" });
 });
 
 const updateProfileData = asyncHandler(async (req, res) => {
@@ -902,7 +918,7 @@ const NotificationList = asyncHandler(async (req, res) => {
                               _id: senderDetails._id,
                               first_name: senderDetails.first_name,
                               last_name: senderDetails.last_name,
-                              pic: `${process.env.BASE_URL}${senderDetails.pic}`,
+                              pic: `${senderDetails.pic}`,
                         };
 
                         const notificationWithSender = {
@@ -932,22 +948,22 @@ const NotificationList = asyncHandler(async (req, res) => {
 
 const calculateTimeDifference = (datetime) => {
       try {
-          // Check if datetime is undefined or null
-          if (!datetime) {
-              return "Invalid date";
-          }
+            // Check if datetime is undefined or null
+            if (!datetime) {
+                  return "Invalid date";
+            }
 
-          const currentTime = moment().tz("Asia/Kolkata");  // Get current time in Asia/Kolkata timezone
-          const notificationTime = moment(datetime, "DD-MM-YYYY HH:mm:ss").tz("Asia/Kolkata");
+            const currentTime = moment().tz("Asia/Kolkata"); // Get current time in Asia/Kolkata timezone
+            const notificationTime = moment(datetime, "DD-MM-YYYY HH:mm:ss").tz(
+                  "Asia/Kolkata"
+            );
 
-          return notificationTime.from(currentTime);  // Use from() instead of fromNow()
-
-      }catch (error) {
-          console.error("Error calculating time difference:", error.message);
-          return "Invalid date format";
+            return notificationTime.from(currentTime); // Use from() instead of fromNow()
+      } catch (error) {
+            console.error("Error calculating time difference:", error.message);
+            return "Invalid date format";
       }
-  };
-
+};
 
 function convertSecondsToReadableTime(seconds) {
       const hours = Math.floor(seconds / 3600);
@@ -1024,6 +1040,17 @@ function TextLocalApi(type, name, mobile, otp) {
 
       sendSms();
 }
+const getProfilePicUploadUrlS3 = asyncHandler(async (req, res) => {
+      const user_id = req.user._id;
+      const user = await User.findById(user_id);
+      const username = user.username;
+      const Profilepicget_url = await PutObjectProfilePic(username);
+
+      return res.status(400).json({
+            Profilepicget_url,
+            status: false,
+      });
+});
 
 module.exports = {
       getUsers,
@@ -1046,4 +1073,6 @@ module.exports = {
       websiteNotificationToken,
       NotificationList,
       ForgetresendOTP,
+      getProfilePicUploadUrlS3,
+      profilePicKey,
 };

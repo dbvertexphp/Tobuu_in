@@ -3,6 +3,8 @@ const bcrypt = require("bcryptjs");
 const format = require("date-fns");
 const moment = require("moment-timezone");
 const moments = require("moment");
+const { getSignedUrlS3 } = require("../config/aws-s3.js");
+
 const userSchema = mongoose.Schema({
       first_name: { type: String, required: true },
       last_name: { type: String, required: true },
@@ -26,13 +28,19 @@ const userSchema = mongoose.Schema({
       pic: {
             type: String,
             required: true,
-            default: "uploads/profiles/defult_pic.jpg",
+            default: "defult_profile/defult_pic.jpg",
       },
       deleted: { type: Boolean, default: false },
       datetime: {
             type: String,
             default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
       },
+});
+
+userSchema.post(["find", "findOne"], async function (result) {
+      if (result && result.pic && typeof result.pic === "string") {
+            result.pic = await getSignedUrlS3(result.pic);
+      }
 });
 
 const adminDashboardSchema = new mongoose.Schema({

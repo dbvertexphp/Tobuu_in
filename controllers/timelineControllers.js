@@ -115,7 +115,7 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
                         const updatedUser = timeline.user_id
                               ? {
                                       ...timeline.user_id._doc,
-                                      pic: `${process.env.BASE_URL}${timeline.user_id.pic}`,
+                                      pic: `${timeline.user_id.pic}`,
                                 }
                               : null;
 
@@ -338,7 +338,7 @@ const getTimelineComments = asyncHandler(async (req, res) => {
                   ...timelineData._doc,
                   user_id: {
                         ...timelineData.user_id._doc,
-                        pic: `${process.env.BASE_URL}${timelineData.user_id.pic}`,
+                        pic: `${timelineData.user_id.pic}`,
                   },
                   like_count: likeCount,
                   like_status, // Include like_status
@@ -377,7 +377,7 @@ const getTimelineComments = asyncHandler(async (req, res) => {
                         ...comment._doc,
                         user_id: {
                               ...comment.user_id._doc,
-                              pic: `${process.env.BASE_URL}${comment.user_id.pic}`,
+                              pic: `${comment.user_id.pic}`,
                         },
                   };
             });
@@ -552,7 +552,7 @@ const getMyTimeline = asyncHandler(async (req, res) => {
                               ...timeline._doc,
                               user_id: {
                                     ...timeline.user_id._doc,
-                                    pic: `${process.env.BASE_URL}${timeline.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
+                                    pic: `${timeline.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
                               },
                               like_count: likeCount,
                               like_status: like_status, // Add like_status to the response
@@ -637,7 +637,7 @@ const getUserTimeline = asyncHandler(async (req, res) => {
                               ...timeline._doc,
                               user_id: {
                                     ...timeline.user_id._doc,
-                                    pic: `${process.env.BASE_URL}${timeline.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
+                                    pic: `${timeline.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
                               },
                               like_count: likeCount,
                               like_status: like_status,
