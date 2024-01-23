@@ -9,6 +9,7 @@ const {
 const Subscribes = require("../models/subscribeModel.js");
 const { AdminDashboard } = require("../models/userModel.js");
 const mongoose = require("mongoose");
+const { getSignedUrlS3 } = require("../config/aws-s3.js");
 
 const uploadPostTimeline = asyncHandler(async (req, res) => {
       const user_id = req.user._id; // Assuming you have user authentication middleware
@@ -67,17 +68,24 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
       const startIndex = (page - 1) * limit;
 
       try {
+            const category_id = req.body.category_id; // Added category_id extraction from query parameters
+
+            // Construct the query based on whether category_id is provided or not
+            const query = category_id
+                  ? { category_id } // If category_id is provided, filter by category_id
+                  : {}; // If category_id is not provided, don't apply any additional filter
+
             // Use Mongoose to fetch paginated Timelines from the database
-            const paginatedTimelines = await PostTimeline.find()
+            const paginatedTimelines = await PostTimeline.find(query)
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
                         path: "user_id",
-                        select: "first_name last_name pic", // Adjust these fields based on your User schema
+                        select: "first_name last_name pic",
                   })
                   .populate({
                         path: "category_id",
-                        select: "category_name", // Adjust this field based on your Category schema
+                        select: "category_name",
                   });
 
             const totalTimelines = await PostTimeline.countDocuments();
@@ -91,15 +99,13 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
                   });
             }
 
-            // Check if a token is present in the request header
-
             const token = req.header("Authorization");
 
             // Iterate through timelines to get like counts and add additional fields
             const timelinesWithAdditionalInfo = await Promise.all(
                   paginatedTimelines.map(async (timeline) => {
-                        let like_status = "No"; // Move the declaration inside the loop
-                        let subscribe_status = "No"; // Move the declaration inside the loop
+                        let like_status = "No";
+                        let subscribe_status = "No";
                         let like_count = 0;
 
                         const likeCount = await getTimelineLikeCount(
@@ -109,24 +115,26 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
                               post_timeline_id: timeline._id,
                         });
                         for (const timelineLikeCountUpdate of timelineLikeCount) {
-                              like_count = timelineLikeCountUpdate.count; // Fix the assignment here, use '=' instead of ':'
+                              like_count = timelineLikeCountUpdate.count;
                         }
-                        // Add the base URL to the user's profile picture
+
+                        const pic_name_url = await getSignedUrlS3(
+                              timeline.user_id.pic
+                        );
+
                         const updatedUser = timeline.user_id
                               ? {
                                       ...timeline.user_id._doc,
-                                      pic: `${timeline.user_id.pic}`,
+                                      pic: pic_name_url,
                                 }
                               : null;
 
                         if (token) {
-                              // Check if the user has liked the current post
                               const isLiked = await PostTimelineLike.exists({
                                     post_timeline_id: timeline._id,
                                     user_ids: req.user._id,
                               });
 
-                              // Set like_status based on whether the user has liked the post
                               like_status = isLiked ? "Yes" : "No";
 
                               const issubscribe = await Subscribes.exists({
@@ -134,7 +142,6 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
                                     subscriber_id: req.user._id,
                               });
 
-                              // Set subscribe_status based on whether the user has subscribed to the author
                               subscribe_status = issubscribe ? "Yes" : "No";
                         }
 
@@ -142,9 +149,8 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
                               ...timeline._doc,
                               user_id: updatedUser,
                               like_count,
-                              like_status: like_status, // Add like_status to the response
-                              subscribe_status: subscribe_status, // Add subscribe_status to the response
-                              // Add additional fields here if needed
+                              like_status: like_status,
+                              subscribe_status: subscribe_status,
                         };
                   })
             );

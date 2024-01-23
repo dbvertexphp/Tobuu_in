@@ -73,8 +73,17 @@ const getPaginatedVideos = asyncHandler(async (req, res) => {
       const startIndex = (page - 1) * limit;
 
       try {
+            let videoQuery = Video.find();
+
+            // Check if category_id is provided in the request body
+            if (req.body.category_id) {
+                  videoQuery = videoQuery.where({
+                        category_id: req.body.category_id,
+                  });
+            }
+
             // Use Mongoose to fetch paginated videos from the database
-            const paginatedVideos = await Video.find()
+            const paginatedVideos = await videoQuery
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -86,7 +95,9 @@ const getPaginatedVideos = asyncHandler(async (req, res) => {
                         select: "category_name", // Adjust this field based on your Category schema
                   });
 
-            const totalVideos = await Video.countDocuments();
+            const totalVideos = await Video.countDocuments(
+                  videoQuery.getQuery()
+            );
             const hasMore = startIndex + paginatedVideos.length < totalVideos;
 
             if (paginatedVideos.length === 0) {
@@ -529,6 +540,13 @@ const getMyVideos = asyncHandler(async (req, res) => {
                         // Set subscribe_status based on whether the user has subscribed to the author
                         subscribe_status = issubscribe ? "Yes" : "No";
 
+                        const thumbnail_name_url = await getSignedUrlS3(
+                              video.thumbnail_name
+                        );
+                        const video_name_url = await getSignedUrlS3(
+                              video.video_name
+                        );
+
                         return {
                               ...video._doc,
                               user_id: {
@@ -538,8 +556,8 @@ const getMyVideos = asyncHandler(async (req, res) => {
                               like_count: likeCount,
                               like_status: like_status, // Add like_status to the response
                               subscribe_status: subscribe_status, // Add subscribe_status to the response
-                              video_url: `api/video/streamVideo/${video._id}`,
-                              thumbnail_name: `public/video/${video.thumbnail_name}`,
+                              video_url: video_name_url,
+                              thumbnail_name: thumbnail_name_url,
                         };
                   })
             );
@@ -607,6 +625,14 @@ const getUserVideos = asyncHandler(async (req, res) => {
                               });
                               subscribe_status = issubscribe ? "Yes" : "No";
                         }
+
+                        const thumbnail_name_url = await getSignedUrlS3(
+                              video.thumbnail_name
+                        );
+                        const video_name_url = await getSignedUrlS3(
+                              video.video_name
+                        );
+
                         return {
                               ...video._doc,
                               user_id: {
@@ -616,8 +642,8 @@ const getUserVideos = asyncHandler(async (req, res) => {
                               like_count: likeCount,
                               like_status: like_status, // Add like_status to the response
                               subscribe_status: subscribe_status, // Add subscribe_status to the response
-                              video_url: `api/video/streamVideo/${video._id}`,
-                              thumbnail_name: `public/video/${video.thumbnail_name}`,
+                              video_url: video_name_url,
+                              thumbnail_name: thumbnail_name_url,
                         };
                   })
             );
@@ -640,11 +666,16 @@ const getUserVideos = asyncHandler(async (req, res) => {
 const getVideosThumbnails = asyncHandler(async (req, res) => {
       try {
             const limit = parseInt(req.params.limit, 10);
+            const category_id = req.body.category_id;
 
-            // Fetch videos based on the limit
-            const videos = await Video.find()
+            // Construct the query based on whether category_id is provided or not
+            const query = category_id
+                  ? { category_id } // If category_id is provided, filter by category_id
+                  : {}; // If category_id is not provided, don't apply any additional filter
+            // Fetch videos based on the limit and category_id (if provided)
+            const videos = await Video.find(query)
                   .limit(limit)
-                  .select("thumbnail_name video_name title"); // Added video_name to the select projection
+                  .select("thumbnail_name video_name title");
 
             if (!videos || videos.length === 0) {
                   return res.status(404).json({

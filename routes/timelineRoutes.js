@@ -19,7 +19,7 @@ timelineRoutes.route("/addTimelineComment").post(protect, addTimelineComment);
 timelineRoutes.route("/Timelinedelete").delete(protect, Timelinedelete);
 timelineRoutes.route("/updateTimelineViewCount").post(protect, updateTimelineViewCount);
 timelineRoutes.route("/getTimelineComments/:timelineId").get(commonProtect,getTimelineComments);
-timelineRoutes.route('/getPaginatedTimeline/:page').get(commonProtect,getPaginatedTimeline);
+timelineRoutes.route('/getPaginatedTimeline/:page').post(commonProtect,getPaginatedTimeline);
 timelineRoutes.route("/updatePostTimelineLike").post(protect, updatePostTimelineLike);
 timelineRoutes.route("/getUserTimeline/:user_id/:page").get(commonProtect,getUserTimeline);
 timelineRoutes.route("/getMyTimeline").get(protect, getMyTimeline);

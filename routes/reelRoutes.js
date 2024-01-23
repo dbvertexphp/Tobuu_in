@@ -25,7 +25,7 @@ reelRoutes.route("/updateReelViewCount").post(protect, updateReelViewCount);
 reelRoutes.route("/getReelComments/:reelId").get(commonProtect, getReelComments);
 reelRoutes.route("/getPaginatedReel/:page").get(commonProtect,getPaginatedReel);
 reelRoutes.route("/streamReel/:reelId").get(streamReel);
-reelRoutes.route("/getReelThumbnails/:limit").get(getReelThumbnails);
+reelRoutes.route("/getReelThumbnails/:limit").post(getReelThumbnails);
 reelRoutes.route("/getUserReels/:user_id/:page").get(commonProtect,getUserReels);
 reelRoutes.route("/getMyReels").get(protect, getMyReels);
 reelRoutes.route("/getReelsUploadUrlS3").get(protect, getReelsUploadUrlS3);

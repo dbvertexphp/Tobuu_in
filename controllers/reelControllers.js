@@ -512,6 +512,13 @@ const getMyReels = asyncHandler(async (req, res) => {
                         // Set subscribe_status based on whether the user has subscribed to the author
                         subscribe_status = issubscribe ? "Yes" : "No";
 
+                        const thumbnail_name_url = await getSignedUrlS3(
+                              reel.thumbnail_name
+                        );
+                        const video_name_url = await getSignedUrlS3(
+                              reel.video_name
+                        );
+
                         return {
                               ...reel._doc,
                               user_id: {
@@ -521,8 +528,8 @@ const getMyReels = asyncHandler(async (req, res) => {
                               like_count: likeCount,
                               like_status: like_status, // Add like_status to the response
                               subscribe_status: subscribe_status, // Add subscribe_status to the response
-                              reel_url: `${process.env.BASE_URL}api/reel/streamReel/${reel._id}`,
-                              thumbnail_name: `${reel.thumbnail_name}`,
+                              reel_url: video_name_url,
+                              thumbnail_name: thumbnail_name_url,
                         };
                   })
             );
@@ -635,11 +642,17 @@ const getUserReels = asyncHandler(async (req, res) => {
 const getReelThumbnails = asyncHandler(async (req, res) => {
       try {
             const limit = parseInt(req.params.limit, 10);
+            const category_id = req.body.category_id;
 
-            // Fetch thumbnails based on the limit
-            const thumbnails = await Reel.find()
+            // Construct the query based on whether category_id is provided or not
+            const query = category_id
+                  ? { category_id } // If category_id is provided, filter by category_id
+                  : {}; // If category_id is not provided, don't apply any additional filter
+
+            // Fetch thumbnails based on the limit and category_id (if provided)
+            const thumbnails = await Reel.find(query)
                   .limit(limit)
-                  .select("thumbnail_name title reel_name"); // Added reel_name to the select projection
+                  .select("thumbnail_name title reel_name");
 
             if (!thumbnails || thumbnails.length === 0) {
                   return res.status(200).json({

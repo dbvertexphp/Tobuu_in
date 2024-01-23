@@ -31,17 +31,44 @@ const Createcategory = asyncHandler(async (req, res) => {
 });
 
 const GetAllCategories = asyncHandler(async (req, res) => {
-      const categories = await Category.find();
+      try {
+        // Fetch all categories from the database
+        const categories = await Category.find().sort({ category_name: 1 });
 
-      if (categories) {
-            res.status(200).json(categories);
-      } else {
-            res.status(404).json({
-                  message: "No categories found.",
-                  status: false,
-            });
+        if (!categories || categories.length === 0) {
+          return res.status(404).json({
+            message: "No categories found.",
+            status: false,
+          });
+        }
+
+        // Find the "All" category, if it exists
+        const allCategory = categories.find((category) => category.category_name.toLowerCase() === "All");
+
+        // Remove the "All" category from the original array, if it exists
+        const categoriesWithoutAll = allCategory
+          ? categories.filter((category) => category.category_name.toLowerCase() !== "All")
+          : categories;
+
+        // Sort the remaining categories alphabetically
+        const sortedCategories = categoriesWithoutAll.sort((a, b) =>
+          a.category_name.localeCompare(b.category_name)
+        );
+
+        // If "All" category exists, add it to the beginning of the sorted array
+        const finalCategories = allCategory
+          ? [allCategory, ...sortedCategories]
+          : sortedCategories;
+
+        res.status(200).json(finalCategories);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        res.status(500).json({
+          message: "Internal Server Error.",
+          status: false,
+        });
       }
-});
+    });
 
 const DeleteCategory = asyncHandler(async (req, res) => {
       const { categoryId } = req.body;
