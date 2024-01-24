@@ -48,26 +48,12 @@ const allMessages = asyncHandler(async (req, res) => {
             const messages = await Message.find({ chat: req.params.chatId })
                   .populate("sender", "pic first_name last_name")
                   .populate("chat");
-
             if (messages.length > 0) {
                   // Use Promise.all to asynchronously generate signed URLs for all senders
                   const signedUrlPromises = messages.map(async (message) => {
                         const getSignedUrl_picsender = await getSignedUrlS3(
                               message.sender.pic
                         );
-
-                        // Update readBy field based on conditions
-                        if (
-                              message.sender._id.toString() !==
-                                    req.user._id.toString() &&
-                              message.sender._id.toString() !== blockedUserId
-                        ) {
-                              // Update readBy if sender ID is different from current user and blocked user
-                              message.readBy = true;
-                              // Save the updated message to the database
-                              await message.save();
-                        }
-
                         return {
                               ...message.toObject(),
                               sender: {
@@ -157,8 +143,10 @@ const sendMessage = asyncHandler(async (req, res) => {
             });
 
             res.json({
-                  ...message.toObject(),
-                  dateLabel: "Today",
+                  message: {
+                        ...message.toObject(),
+                        dateLabel: "Today",
+                  },
             });
       } catch (error) {
             res.status(500).json({ error: error.message, status: false });
@@ -208,13 +196,8 @@ const formatDateLabel = (datetime) => {
       }
 
       // Format other dates
-      const formattedDay = messageDate.getUTCDate();
-      const formattedMonth = new Intl.DateTimeFormat("en", {
-            month: "short",
-      }).format(messageDate);
-      const formattedYear = messageDate.getUTCFullYear(); // Extract last two digits
-
-      return `${formattedDay}-${formattedMonth}-${formattedYear}`;
+      const options = { month: "short", day: "numeric", year: "numeric" };
+      return messageDate.toLocaleDateString(undefined, options);
 };
 
 module.exports = { allMessages, sendMessage };

@@ -14,13 +14,21 @@ const createSocketIO = (server) => {
             },
       });
 
+      const connectedUsers = {};
+
       io.on("connection", (socket) => {
-            console.log("Connected to socket.io");
+            // console.log("Connected to socket.io");
 
             socket.on("setup", (userData) => {
-                  console.log("connected");
                   socket.join(userData._id);
+                  console.log("connected user", userData._id);
                   socket.emit("connected");
+
+                  // Emit online status for the connected user
+                  io.emit("user online", {
+                        userId: userData._id,
+                        online: true,
+                  });
             });
 
             socket.on("join chat", (room) => {
@@ -28,9 +36,9 @@ const createSocketIO = (server) => {
                   console.log("User Joined Room: " + room);
             });
 
-            socket.on("typing", (room) => {
-                  socket.in(room).emit("typing");
-                  console.log("typing");
+            socket.on("typing", (data) => {
+                  socket.in(data.chatData.room).emit("typing");
+                  console.log("room", data.chatData.room);
             });
 
             socket.on("stop typing", (room) => {
@@ -46,9 +54,11 @@ const createSocketIO = (server) => {
 
             socket.on("new message", (newMessageRecieved) => {
                   try {
+                        console.log(
+                              "new message" + JSON.stringify(newMessageRecieved)
+                        );
                         var chat = newMessageRecieved.response.chat;
-                        console.log("new message" + newMessageRecieved);
-
+                        var room_id = newMessageRecieved.response.chat._id;
                         if (!chat || !chat.users) {
                               return console.log(
                                     "Chat or chat.users not defined"
@@ -60,7 +70,8 @@ const createSocketIO = (server) => {
                                     newMessageRecieved.response.sender._id
                               )
                                     return;
-                              socket.in(user._id).emit(
+
+                              socket.in(room_id).emit(
                                     "message received",
                                     newMessageRecieved
                               );
@@ -72,6 +83,16 @@ const createSocketIO = (server) => {
 
             socket.on("disconnect", () => {
                   console.log("User disconnected");
+
+                  // Get the user ID of the disconnected user
+                  const userId = Object.keys(socket.rooms).find(
+                        (room) => room !== socket.id
+                  );
+
+                  if (userId) {
+                        // Emit online status for the disconnected user
+                        io.emit("user online", { userId, online: false });
+                  }
             });
       });
 };

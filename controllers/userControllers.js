@@ -290,42 +290,57 @@ const logoutUser = asyncHandler(async (req, res) => {
 const verifyOtp = asyncHandler(async (req, res) => {
       const { mobile, otp } = req.body;
 
-      const user = await User.findOne({ mobile });
+      try {
+            const user = await User.findOne({ mobile });
 
-      if (!user) {
-            res.status(200).json({
-                  message: "User Not Found.",
-                  status: false,
+            if (!user) {
+                  return res.status(200).json({
+                        message: "User Not Found.",
+                        status: false,
+                  });
+            }
+
+            if (user.otp_verified) {
+                  return res.status(200).json({
+                        message: "User is already OTP verified.",
+                        status: false,
+                  });
+            }
+
+            // Check if the provided OTP matches the OTP in the user document
+            if (user.otp !== otp) {
+                  return res.status(200).json({
+                        message: "Invalid OTP.",
+                        status: false,
+                  });
+            }
+
+            // Update the user's otp_verified field to 1 (OTP verified)
+            const result = await User.updateOne(
+                  { _id: user._id },
+                  { $set: { otp_verified: 1 } }
+            );
+
+            if (result.nModified > 0) {
+                  console.log("OTP verification status updated successfully.");
+            } else {
+                  console.log(
+                        "No matching user found or OTP verification status already set."
+                  );
+            }
+
+            // Retrieve the updated user document
+            const updatedUser = await User.findById(user._id);
+
+            res.json({
+                  user: updatedUser,
+                  token: generateToken(updatedUser._id),
+                  status: true,
             });
-            return;
+      } catch (error) {
+            console.error("Error verifying OTP:", error.message);
+            res.status(500).json({ error: error.message, status: false });
       }
-
-      if (user.otp_verified) {
-            res.status(200).json({
-                  message: "User is already OTP verified.",
-                  status: false,
-            });
-            return;
-      }
-
-      // Check if the provided OTP matches the OTP in the user document
-      if (user.otp !== otp) {
-            res.status(200).json({
-                  message: "Invalid OTP.",
-                  status: false,
-            });
-            return;
-      }
-
-      // Update the user's otp_verified field to 1 (OTP verified)
-      user.otp_verified = 1;
-      await user.save();
-
-      res.json({
-            user,
-            token: generateToken(user._id),
-            status: true,
-      });
 });
 
 const resendOTP = asyncHandler(async (req, res) => {
