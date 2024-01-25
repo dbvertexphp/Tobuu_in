@@ -86,7 +86,7 @@ const getReelLikeCount = async (reel_id) => {
 
 const getPaginatedReel = asyncHandler(async (req, res) => {
       const page = parseInt(req.params.page) || 1;
-      const limit = parseInt(req.query.limit) || 5;
+      const limit = parseInt(req.query.limit) || 10;
       const startIndex = (page - 1) * limit;
 
       try {
