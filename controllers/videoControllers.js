@@ -128,9 +128,10 @@ const getPaginatedVideos = asyncHandler(async (req, res) => {
                         like_count = videoLikeCount.count;
                   }
 
+                  const pic_name_url = await getSignedUrlS3(video.user_id.pic);
                   const updatedUser = {
                         ...video.user_id._doc,
-                        pic: `${video.user_id.pic}`,
+                        pic: pic_name_url,
                   };
 
                   if (token) {
@@ -546,12 +547,14 @@ const getMyVideos = asyncHandler(async (req, res) => {
                         const video_name_url = await getSignedUrlS3(
                               video.video_name
                         );
-
+                        const pic_name_url = await getSignedUrlS3(
+                              video.user_id.pic
+                        );
                         return {
                               ...video._doc,
                               user_id: {
                                     ...video.user_id._doc,
-                                    pic: `${video.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
+                                    pic: pic_name_url, // Assuming "pic" is the field in your User schema that contains the URL
                               },
                               like_count: likeCount,
                               like_status: like_status, // Add like_status to the response
@@ -633,11 +636,14 @@ const getUserVideos = asyncHandler(async (req, res) => {
                               video.video_name
                         );
 
+                        const pic_name_url = await getSignedUrlS3(
+                              video.user_id.pic
+                        );
                         return {
                               ...video._doc,
                               user_id: {
                                     ...video.user_id._doc,
-                                    pic: `${video.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
+                                    pic: pic_name_url, // Assuming "pic" is the field in your User schema that contains the URL
                               },
                               like_count: likeCount,
                               like_status: like_status, // Add like_status to the response

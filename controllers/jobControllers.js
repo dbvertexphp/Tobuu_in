@@ -2,6 +2,8 @@ const asyncHandler = require("express-async-handler");
 const { PostJob, AppliedUser } = require("../models/postjobModel.js");
 const { AdminDashboard } = require("../models/userModel.js");
 require("dotenv").config();
+const { getSignedUrlS3 } = require("../config/aws-s3.js");
+
 const uploadPostJob = asyncHandler(async (req, res) => {
       const user_id = req.user._id; // Assuming you have user authentication middleware
 
@@ -91,12 +93,14 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
                               // Set apply_status based on whether the user has applied for the job
                               apply_status = hasApplied ? "Yes" : "No";
                         }
-
+                        const pic_name_url = await getSignedUrlS3(
+                              job.user_id.pic
+                        );
                         // Add the base URL to the user's profile picture
                         const updatedUser = job.user_id
                               ? {
                                       ...job.user_id._doc,
-                                      pic: `${job.user_id.pic}`,
+                                      pic: pic_name_url,
                                 }
                               : null;
 
@@ -212,25 +216,44 @@ const getAppliedJobs = asyncHandler(async (req, res) => {
             }
 
             // Transform the data to include the job description
-            const transformedJobs = appliedJobs.map(
-                  ({ job_id, createdAt, updatedAt, __v }) => ({
-                        _id: job_id._id,
-                        category_id: {
-                              category_name: job_id.category_id.category_name,
-                        },
+            const transformedJobs = await Promise.all(
+                  appliedJobs.map(
+                        async ({ job_id, createdAt, updatedAt, __v }) => {
+                              try {
+                                    const pic_name_url = await getSignedUrlS3(
+                                          job_id.user_id.pic
+                                    );
 
-                        user_id: {
-                              first_name: job_id.user_id.first_name,
-                              last_name: job_id.user_id.last_name,
-                              pic: `${job_id.user_id.pic}`, // Add the base URL to the pic field
-                        },
-                        description: job_id.description, // Include the job description
-                        createdAt,
-                        updatedAt,
-                        __v,
-                        apply_status: "Yes",
-                        job_status: "Open",
-                  })
+                                    return {
+                                          _id: job_id._id,
+                                          category_id: {
+                                                category_name:
+                                                      job_id.category_id
+                                                            .category_name,
+                                          },
+                                          user_id: {
+                                                first_name:
+                                                      job_id.user_id.first_name,
+                                                last_name:
+                                                      job_id.user_id.last_name,
+                                                pic: pic_name_url,
+                                          },
+                                          description: job_id.description,
+                                          createdAt,
+                                          updatedAt,
+                                          __v,
+                                          apply_status: "Yes",
+                                          job_status: "Open",
+                                    };
+                              } catch (error) {
+                                    console.error(
+                                          "Error fetching signed URL:",
+                                          error
+                                    );
+                                    throw error; // Rethrow the error to catch block
+                              }
+                        }
+                  )
             );
 
             res.json({
@@ -268,15 +291,21 @@ const getAppliedUsers = asyncHandler(async (req, res) => {
             }
 
             // Transform the data to include user details
-            const transformedUsers = appliedUsers.user_ids.map(
-                  ({ _id, first_name, last_name, pic }) => ({
-                        user_id: {
-                              _id,
-                              first_name,
-                              last_name,
-                              pic: `${pic}`, // Add the base URL to the pic field
-                        },
-                  })
+            const transformedUsers = await Promise.all(
+                  appliedUsers.user_ids.map(
+                        async ({ _id, first_name, last_name, pic }) => {
+                              const pic_name_url = await getSignedUrlS3(pic);
+
+                              return {
+                                    user_id: {
+                                          _id,
+                                          first_name,
+                                          last_name,
+                                          pic: pic_name_url,
+                                    },
+                              };
+                        }
+                  )
             );
 
             res.json({
@@ -333,17 +362,18 @@ const getMyJobs = asyncHandler(async (req, res) => {
                               userCountData.length > 0
                                     ? userCountData[0].userCount
                                     : 0;
-
+                        const pic_name_url = await getSignedUrlS3(req.user.pic);
                         return {
                               ...job._doc,
                               category_id: {
                                     category_name:
                                           job.category_id.category_name,
                               },
+
                               user_id: {
                                     first_name: req.user.first_name,
                                     last_name: req.user.last_name,
-                                    pic: `${req.user.pic}`,
+                                    pic: req.user.pic,
                               },
                               applied_count: appliedUsersCount, // Add applied_count to the transformed job data
                         };

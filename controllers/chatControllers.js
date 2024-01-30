@@ -5,6 +5,7 @@ const dotenv = require("dotenv");
 const { User } = require("../models/userModel.js");
 const createSocketIO = require("../config/socket_io.js");
 const io = createSocketIO();
+const { getSignedUrlS3 } = require("../config/aws-s3.js");
 require("dotenv").config();
 const base_url = `${process.env.BASE_URL}`;
 
@@ -42,17 +43,22 @@ const accessChat = asyncHandler(async (req, res) => {
 
             // Add BASE_URL to the pic field if it exists
             if (chatWithBaseUrl.pic) {
-                  chatWithBaseUrl.pic =
-                        process.env.BASE_URL + chatWithBaseUrl.pic;
+                  const pic_name_url = await getSignedUrlS3(
+                        chatWithBaseUrl.pic
+                  );
+                  chatWithBaseUrl.pic = pic_name_url;
             }
 
             // Add BASE_URL to the pic field for each user in the users array
             if (chatWithBaseUrl.users && chatWithBaseUrl.users.length > 0) {
-                  chatWithBaseUrl.users.forEach((user) => {
+                  for (let user of chatWithBaseUrl.users) {
                         if (user.pic) {
-                              user.pic = process.env.BASE_URL + user.pic;
+                              const pic_name_url = await getSignedUrlS3(
+                                    user.pic
+                              );
+                              user.pic = pic_name_url;
                         }
-                  });
+                  }
             }
 
             res.send(chatWithBaseUrl);
@@ -122,30 +128,42 @@ const fetchChats = asyncHandler(async (req, res) => {
                   .skip(skip)
                   .limit(pageSize);
 
-            const chatListWithBaseUrl = results.map((result) => {
-                  const chatObject = result.toObject();
+            const chatListWithBaseUrl = await Promise.all(
+                  results.map(async (result) => {
+                        const chatObject = result.toObject();
 
-                  // Sirf aapke sath associated users ko include karein
-                  chatObject.users = chatObject.users.filter(
-                        (user) =>
-                              user._id.toString() !== req.user._id.toString()
-                  );
+                        // Sirf aapke sath associated users ko include karein
+                        chatObject.users = chatObject.users.filter(
+                              (user) =>
+                                    user._id.toString() !==
+                                    req.user._id.toString()
+                        );
 
-                  // Agar koi user match karta hai aur chat me kam se kam ek user aur hai, toh hi is chatObject ko include karein
-                  if (chatObject.users.length > 0) {
-                        // प्रत्येक उपयोगकर्ता के लिए 'pic' पैरामीटर को 'base_url' के साथ जोड़ें
-                        chatObject.users = chatObject.users.map((user) => {
-                              if (user.pic !== undefined && user.pic !== null) {
-                                    user.pic = base_url + String(user.pic);
-                              }
-                              return user;
-                        });
+                        // Agar koi user match karta hai aur chat me kam se kam ek user aur hai, toh hi is chatObject ko include karein
+                        if (chatObject.users.length > 0) {
+                              // प्रत्येक उपयोगकर्ता के लिए 'pic' पैरामीटर को 'base_url' के साथ जोड़ें
+                              await Promise.all(
+                                    chatObject.users.map(async (user) => {
+                                          if (
+                                                user.pic !== undefined &&
+                                                user.pic !== null
+                                          ) {
+                                                const pic_name_url =
+                                                      await getSignedUrlS3(
+                                                            user.pic
+                                                      );
+                                                user.pic = pic_name_url;
+                                          }
+                                          return user;
+                                    })
+                              );
 
-                        return chatObject;
-                  }
+                              return chatObject;
+                        }
 
-                  return null;
-            });
+                        return null;
+                  })
+            );
 
             // Null values ko filter karein
             const filteredChatList = chatListWithBaseUrl.filter(Boolean);
@@ -250,17 +268,22 @@ const blockUserList = asyncHandler(async (req, res) => {
                         });
 
                         // Response ke liye details ko transform karein
-                        blockedUsersDetails.push(
-                              ...usersDetails.map((user) => ({
-                                    pic: base_url + user.pic,
+                        for (const user of usersDetails) {
+                              const pic_name_url = await getSignedUrlS3(
+                                    user.pic
+                              );
+                              const chatId = userChats.find((chat) =>
+                                    chat.blockedUsers.includes(user._id)
+                              )._id;
+
+                              blockedUsersDetails.push({
+                                    pic: pic_name_url,
                                     first_name: user.first_name,
                                     last_name: user.last_name,
                                     _id: user._id,
-                                    ChatId: userChats.find((chat) =>
-                                          chat.blockedUsers.includes(user._id)
-                                    )._id,
-                              }))
-                        );
+                                    ChatId: chatId,
+                              });
+                        }
                   }
             }
 

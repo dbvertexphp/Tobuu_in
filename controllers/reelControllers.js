@@ -86,7 +86,7 @@ const getReelLikeCount = async (reel_id) => {
 
 const getPaginatedReel = asyncHandler(async (req, res) => {
       const page = parseInt(req.params.page) || 1;
-      const limit = parseInt(req.query.limit) || 2;
+      const limit = parseInt(req.query.limit) || 10;
       const startIndex = (page - 1) * limit;
 
       try {
@@ -133,11 +133,11 @@ const getPaginatedReel = asyncHandler(async (req, res) => {
                   for (const reelLikeCountUpdate of reelLikeCount) {
                         like_count = reelLikeCountUpdate.count; // Fix the assignment here, use '=' instead of ':'
                   }
-
+                  const pic_name_url = await getSignedUrlS3(reel.user_id.pic);
                   // Add the base URL to the user's profile picture
                   const updatedUser = {
                         ...reel.user_id._doc,
-                        pic: `${reel.user_id.pic}`,
+                        pic: pic_name_url,
                   };
 
                   if (token) {
@@ -467,9 +467,11 @@ const updateReelViewCount = asyncHandler(async (req, res) => {
 
 const getMyReels = asyncHandler(async (req, res) => {
       const user_id = req.user._id; // Assuming you have user authentication middleware
+      const page = parseInt(req.query.page) || 1; // Default to page 1 if not provided
+      const limit = parseInt(req.query.limit) || 10; // Default limit to 3 if not provided
 
       try {
-            // Fetch reels from the database for the given user_id
+            // Fetch reels from the database for the given user_id with pagination
             const reels = await Reel.find({ user_id })
                   .populate({
                         path: "user_id",
@@ -478,14 +480,18 @@ const getMyReels = asyncHandler(async (req, res) => {
                   .populate({
                         path: "category_id",
                         select: "category_name", // Adjust this field based on your Category schema
-                  });
+                  })
+                  .skip((page - 1) * limit) // Skip records based on the page
+                  .limit(limit); // Limit the number of records per page
 
             // Check if there are no reels
             if (!reels || reels.length === 0) {
                   return res.json({
-                        message: "No Reel Posts Available.",
-                        status: true,
+                        page: page,
+                        limit: limit,
                         data: [],
+                        hasMore: false, // No more data available
+                        status: true,
                   });
             }
 
@@ -516,14 +522,16 @@ const getMyReels = asyncHandler(async (req, res) => {
                               reel.thumbnail_name
                         );
                         const video_name_url = await getSignedUrlS3(
-                              reel.video_name
+                              reel.reel_name
                         );
-
+                        const pic_name_url = await getSignedUrlS3(
+                              reel.user_id.pic
+                        );
                         return {
                               ...reel._doc,
                               user_id: {
                                     ...reel.user_id._doc,
-                                    pic: `${reel.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
+                                    pic: pic_name_url, // Assuming "pic" is the field in your User schema that contains the URL
                               },
                               like_count: likeCount,
                               like_status: like_status, // Add like_status to the response
@@ -535,9 +543,11 @@ const getMyReels = asyncHandler(async (req, res) => {
             );
 
             res.json({
-                  message: "Reels fetched successfully.",
-                  status: true,
+                  page: page,
+                  limit: limit,
                   data: updatedReels,
+                  hasMore: updatedReels.length === limit, // Determine if there are more records available
+                  status: true,
             });
       } catch (error) {
             console.error(error);
@@ -609,12 +619,14 @@ const getUserReels = asyncHandler(async (req, res) => {
                         const video_name_url = await getSignedUrlS3(
                               reel.reel_name
                         );
-
+                        const pic_name_url = await getSignedUrlS3(
+                              reel.user_id.pic
+                        );
                         return {
                               ...reel._doc,
                               user_id: {
                                     ...reel.user_id._doc,
-                                    pic: `${reel.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
+                                    pic: pic_name_url, // Assuming "pic" is the field in your User schema that contains the URL
                               },
                               like_count: likeCount,
                               like_status: like_status,

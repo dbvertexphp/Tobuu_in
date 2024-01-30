@@ -553,12 +553,14 @@ const getMyTimeline = asyncHandler(async (req, res) => {
 
                         // Set subscribe_status based on whether the user has subscribed to the author
                         subscribe_status = issubscribe ? "Yes" : "No";
-
+                        const pic_name_url = await getSignedUrlS3(
+                              timeline.user_id.pic
+                        );
                         return {
                               ...timeline._doc,
                               user_id: {
                                     ...timeline.user_id._doc,
-                                    pic: `${timeline.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
+                                    pic: pic_name_url, // Assuming "pic" is the field in your User schema that contains the URL
                               },
                               like_count: likeCount,
                               like_status: like_status, // Add like_status to the response
@@ -638,12 +640,14 @@ const getUserTimeline = asyncHandler(async (req, res) => {
                               // Set subscribe_status based on whether the user has subscribed to the author
                               subscribe_status = issubscribe ? "Yes" : "No";
                         }
-
+                        const pic_name_url = await getSignedUrlS3(
+                              timeline.user_id.pic
+                        );
                         return {
                               ...timeline._doc,
                               user_id: {
                                     ...timeline.user_id._doc,
-                                    pic: `${timeline.user_id.pic}`, // Assuming "pic" is the field in your User schema that contains the URL
+                                    pic: pic_name_url, // Assuming "pic" is the field in your User schema that contains the URL
                               },
                               like_count: likeCount,
                               like_status: like_status,

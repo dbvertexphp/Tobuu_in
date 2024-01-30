@@ -247,7 +247,7 @@ const authUser = asyncHandler(async (req, res) => {
 
             const user = {
                   ...userdata._doc,
-                  pic: process.env.BASE_URL + userdata._doc.pic,
+                  pic: userdata._doc.pic,
             };
 
             res.json({
@@ -461,13 +461,13 @@ const profilePicKey = asyncHandler(async (req, res) => {
       if (!user) {
             return res.status(200).json({ message: "User not found" });
       }
-      console.log(profilePicKeys);
       // Update the user's profile picture (if uploaded)
       user.pic = profilePicKeys;
       await user.save();
+      const pic_name_url = await getSignedUrlS3(user.pic);
       return res.status(200).json({
             message: "Profile picture uploaded successfully",
-            pic: user.pic,
+            pic: pic_name_url,
             status: true,
       });
       return res.status(200).json({ message: "No file uploaded" });
@@ -805,7 +805,12 @@ const addReview = asyncHandler(async (req, res) => {
 
             // Update the user's review_name field with the rounded average
             user_reviewers.review = roundedAverage;
-            await user_reviewers.save();
+
+            await User.updateOne(
+                  { _id: review_id },
+                  { $set: { review: user_reviewers.review } }
+            );
+            //await user_reviewers.save();
 
             type = "Review";
             message = `Completed Review.`;
@@ -1059,11 +1064,11 @@ const getProfilePicUploadUrlS3 = asyncHandler(async (req, res) => {
       const user_id = req.user._id;
       const user = await User.findById(user_id);
       const username = user.username;
-      const Profilepicget_url = await PutObjectProfilePic(username);
+      const profilepicget_url = await PutObjectProfilePic(username);
 
-      return res.status(400).json({
-            Profilepicget_url,
-            status: false,
+      return res.status(200).json({
+            profilepicget_url,
+            status: true,
       });
 });
 

@@ -2,6 +2,7 @@ const asyncHandler = require("express-async-handler");
 const { Hire, HireStatus } = require("../models/hireModel.js");
 require("dotenv").config();
 const { createNotification } = require("./notificationControllers.js");
+const { getSignedUrlS3 } = require("../config/aws-s3.js");
 
 const createHire = asyncHandler(async (req, res) => {
       const { hire_id, amount, calendar_id } = req.body;
@@ -9,7 +10,7 @@ const createHire = asyncHandler(async (req, res) => {
       try {
             message = `Sent Offer And Paid ${amount} To Admin`;
             type = "Payment";
-             createNotification(user_id, hire_id, message, type);
+            createNotification(user_id, hire_id, message, type);
             const newHire = await Hire.create({
                   user_id,
                   hire_id,
@@ -47,51 +48,56 @@ const getHireListByUserId = asyncHandler(async (req, res) => {
 
             // ...
 
-            const processedHireList = hireList.map((hire) => {
-                  const originalDatetime = hire.datetime;
-                  const dateParts = originalDatetime.split(/[- :]/);
-                  const datetimeObject = new Date(
-                        Date.UTC(
-                              dateParts[2],
-                              dateParts[1] - 1,
-                              dateParts[0],
-                              dateParts[3],
-                              dateParts[4],
-                              dateParts[5]
-                        )
-                  );
-                  const isValidDate = !isNaN(datetimeObject.getDate());
-                  const formattedDate = isValidDate
-                        ? `${datetimeObject
-                                .getDate()
-                                .toString()
-                                .padStart(2, "0")}-${(
-                                datetimeObject.getMonth() + 1
-                          )
-                                .toString()
-                                .padStart(
-                                      2,
-                                      "0"
-                                )}-${datetimeObject.getFullYear()}`
-                        : "Invalid Date Format";
-
-                  return {
-                        hire_user_data: {
-                              _id: hire.hire_id._id,
-                              first_name: hire.hire_id.first_name,
-                              last_name: hire.hire_id.last_name,
-                              pic:  hire.hire_id.pic,
-                        },
-                        _id: hire._id,
-                        amount: hire.amount,
-                        datetime: formattedDate,
-                        calendar_id: hire.calendar_id,
-                        work_status: {
-                              payment_status: hire.work_status?.payment_status,
-                              status_code: hire.work_status?.status_code,
-                        },
-                  };
-            });
+            const processedHireList = await Promise.all(
+                  hireList.map(async (hire) => {
+                        const originalDatetime = hire.datetime;
+                        const dateParts = originalDatetime.split(/[- :]/);
+                        const datetimeObject = new Date(
+                              Date.UTC(
+                                    dateParts[2],
+                                    dateParts[1] - 1,
+                                    dateParts[0],
+                                    dateParts[3],
+                                    dateParts[4],
+                                    dateParts[5]
+                              )
+                        );
+                        const isValidDate = !isNaN(datetimeObject.getDate());
+                        const formattedDate = isValidDate
+                              ? `${datetimeObject
+                                      .getDate()
+                                      .toString()
+                                      .padStart(2, "0")}-${(
+                                      datetimeObject.getMonth() + 1
+                                )
+                                      .toString()
+                                      .padStart(
+                                            2,
+                                            "0"
+                                      )}-${datetimeObject.getFullYear()}`
+                              : "Invalid Date Format";
+                        const pic_name_url = await getSignedUrlS3(
+                              hire.hire_id.pic
+                        );
+                        return {
+                              hire_user_data: {
+                                    _id: hire.hire_id._id,
+                                    first_name: hire.hire_id.first_name,
+                                    last_name: hire.hire_id.last_name,
+                                    pic: pic_name_url,
+                              },
+                              _id: hire._id,
+                              amount: hire.amount,
+                              datetime: formattedDate,
+                              calendar_id: hire.calendar_id,
+                              work_status: {
+                                    payment_status:
+                                          hire.work_status?.payment_status,
+                                    status_code: hire.work_status?.status_code,
+                              },
+                        };
+                  })
+            );
 
             // Calculate total amount
             const totalAmount = hireList.reduce(
@@ -141,50 +147,56 @@ const getHireByMe = asyncHandler(async (req, res) => {
                   });
 
             // Process the URLs for profile pictures and status
-            const processedHireList = hireList.map((hire) => {
-                  const originalDatetime = hire.datetime;
-                  const dateParts = originalDatetime.split(/[- :]/);
-                  const datetimeObject = new Date(
-                        Date.UTC(
-                              dateParts[2],
-                              dateParts[1] - 1,
-                              dateParts[0],
-                              dateParts[3],
-                              dateParts[4],
-                              dateParts[5]
-                        )
-                  );
-                  const isValidDate = !isNaN(datetimeObject.getDate());
-                  const formattedDate = isValidDate
-                        ? `${datetimeObject
-                                .getDate()
-                                .toString()
-                                .padStart(2, "0")}-${(
-                                datetimeObject.getMonth() + 1
-                          )
-                                .toString()
-                                .padStart(
-                                      2,
-                                      "0"
-                                )}-${datetimeObject.getFullYear()}`
-                        : "Invalid Date Format";
-                  return {
-                        hire_user_data: {
-                              _id: hire.user_id._id,
-                              first_name: hire.user_id.first_name,
-                              last_name: hire.user_id.last_name,
-                              pic:  hire.user_id.pic,
-                        },
-                        _id: hire._id,
-                        amount: hire.amount,
-                        datetime: formattedDate,
-                        calendar_id: hire.calendar_id,
-                        work_status: {
-                              payment_status: hire.work_status?.payment_status, // Use "work_status" instead of "status"
-                              status_code: hire.work_status?.status_code,
-                        },
-                  };
-            });
+            const processedHireList = await Promise.all(
+                  hireList.map(async (hire) => {
+                        const originalDatetime = hire.datetime;
+                        const dateParts = originalDatetime.split(/[- :]/);
+                        const datetimeObject = new Date(
+                              Date.UTC(
+                                    dateParts[2],
+                                    dateParts[1] - 1,
+                                    dateParts[0],
+                                    dateParts[3],
+                                    dateParts[4],
+                                    dateParts[5]
+                              )
+                        );
+                        const isValidDate = !isNaN(datetimeObject.getDate());
+                        const formattedDate = isValidDate
+                              ? `${datetimeObject
+                                      .getDate()
+                                      .toString()
+                                      .padStart(2, "0")}-${(
+                                      datetimeObject.getMonth() + 1
+                                )
+                                      .toString()
+                                      .padStart(
+                                            2,
+                                            "0"
+                                      )}-${datetimeObject.getFullYear()}`
+                              : "Invalid Date Format";
+                        const pic_name_url = await getSignedUrlS3(
+                              hire.user_id.pic
+                        );
+                        return {
+                              hire_user_data: {
+                                    _id: hire.user_id._id,
+                                    first_name: hire.user_id.first_name,
+                                    last_name: hire.user_id.last_name,
+                                    pic: pic_name_url,
+                              },
+                              _id: hire._id,
+                              amount: hire.amount,
+                              datetime: formattedDate,
+                              calendar_id: hire.calendar_id,
+                              work_status: {
+                                    payment_status:
+                                          hire.work_status?.payment_status,
+                                    status_code: hire.work_status?.status_code,
+                              },
+                        };
+                  })
+            );
 
             // Calculate total amount
             const totalAmount = hireList.reduce(
@@ -248,8 +260,6 @@ const updateHireStatus = asyncHandler(async (req, res) => {
                   receiver_id = existingHire.hire_id;
                   createNotification(sender_id, receiver_id, message, type);
             }
-
-
 
             res.json({
                   message: "Hire status updated successfully",
@@ -339,13 +349,13 @@ const getAllHireList = asyncHandler(async (req, res) => {
                               user_id: hire.user_id._id,
                               first_name: hire.user_id.first_name,
                               last_name: hire.user_id.last_name,
-                              pic:  hire.user_id.pic,
+                              pic: hire.user_id.pic,
                         },
                         hire_user_data: {
                               hire_id: hire.hire_id._id,
                               first_name: hire.hire_id.first_name,
                               last_name: hire.hire_id.last_name,
-                              pic:  hire.hire_id.pic,
+                              pic: hire.hire_id.pic,
                         },
                         work_status: {
                               payment_status: hire.status.payment_status,
