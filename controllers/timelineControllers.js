@@ -340,11 +340,13 @@ const getTimelineComments = asyncHandler(async (req, res) => {
             let like_status = "No";
             let subscribe_status = "No";
 
+            const pic_name_url = await getSignedUrlS3(timelineData.user_id.pic);
+
             const updatedTimelineData = {
                   ...timelineData._doc,
                   user_id: {
                         ...timelineData.user_id._doc,
-                        pic: `${timelineData.user_id.pic}`,
+                        pic: pic_name_url,
                   },
                   like_count: likeCount,
                   like_status, // Include like_status
@@ -372,21 +374,20 @@ const getTimelineComments = asyncHandler(async (req, res) => {
                         : "No";
             }
 
-            const updatedTimelineComments = timelineComments.map((comment) => {
-                  if (!comment.user_id) {
+            const updatedTimelineComments = await Promise.all(
+                  timelineComments.map(async (comment) => {
+                        const pic_name_url = await getSignedUrlS3(
+                              comment.user_id.pic
+                        );
                         return {
-                              // handle the case when user_id is null or undefined
+                              ...comment._doc,
+                              user_id: {
+                                    ...comment.user_id._doc,
+                                    pic: pic_name_url,
+                              },
                         };
-                  }
-
-                  return {
-                        ...comment._doc,
-                        user_id: {
-                              ...comment.user_id._doc,
-                              pic: `${comment.user_id.pic}`,
-                        },
-                  };
-            });
+                  })
+            );
 
             res.json({
                   message: "Timeline comments fetched successfully.",

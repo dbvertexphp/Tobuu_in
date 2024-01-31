@@ -389,22 +389,30 @@ const getReelComments = asyncHandler(async (req, res) => {
             const likeCount = await getReelLikeCount(reelId);
 
             // Add the base URL to the pic field in reel details
+            const pic_name_url = await getSignedUrlS3(reelDetails.user_id.pic);
             const updatedReelDetails = {
                   ...reelDetails._doc,
                   user_id: {
                         ...reelDetails.user_id._doc,
-                        pic: `${reelDetails.user_id.pic}`,
+                        pic: pic_name_url,
                   },
             };
 
             // Add the base URL to the pic field in comments
-            const updatedReelComments = reelComments.map((comment) => ({
-                  ...comment._doc,
-                  user_id: {
-                        ...comment.user_id._doc,
-                        pic: `${comment.user_id.pic}`,
-                  },
-            }));
+            const updatedReelComments = await Promise.all(
+                  reelComments.map(async (comment) => {
+                        const pic_name_url = await getSignedUrlS3(
+                              comment.user_id.pic
+                        );
+                        return {
+                              ...comment._doc,
+                              user_id: {
+                                    ...comment.user_id._doc,
+                                    pic: pic_name_url,
+                              },
+                        };
+                  })
+            );
 
             res.json({
                   message: "Reel comments fetched successfully.",
