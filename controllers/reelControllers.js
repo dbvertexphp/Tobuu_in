@@ -86,7 +86,7 @@ const getReelLikeCount = async (reel_id) => {
 
 const getPaginatedReel = asyncHandler(async (req, res) => {
       const page = parseInt(req.params.page) || 1;
-      const limit = parseInt(req.query.limit) || 10;
+      const limit = parseInt(req.query.limit) || 1;
       const startIndex = (page - 1) * limit;
 
       try {
@@ -110,6 +110,7 @@ const getPaginatedReel = asyncHandler(async (req, res) => {
                   return res.json({
                         message: "Reels Not Found",
                         status: true,
+                        data: [],
                   });
             }
 

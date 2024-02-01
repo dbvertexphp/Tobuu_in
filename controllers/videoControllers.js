@@ -381,6 +381,13 @@ const getVideoComments = asyncHandler(async (req, res) => {
             const pic_name_url = await getSignedUrlS3(videoDetails.user_id.pic);
 
             // Add the base URL to the pic field in video details
+
+            const thumbnail_name_url = await getSignedUrlS3(
+                  videoDetails.thumbnail_name
+            );
+            const video_name_url = await getSignedUrlS3(
+                  videoDetails.video_name
+            );
             const updatedVideoDetails = {
                   ...videoDetails._doc,
                   user_id: {
@@ -388,8 +395,8 @@ const getVideoComments = asyncHandler(async (req, res) => {
                         pic: pic_name_url,
                   },
                   like_count: likeCount,
-                  thumbnail_name: `${videoDetails.thumbnail_name}`,
-                  video_url: `api/video/streamVideo/${videoDetails._id}`,
+                  thumbnail_name: thumbnail_name_url,
+                  video_url: video_name_url,
                   like_status, // Include like_status
                   subscribe_status, // Include subscribe_status
             };
