@@ -2,7 +2,11 @@ const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const asyncHandler = require("express-async-handler");
 const { Video, VideoLike, VideoComment } = require("../models/videoModel.js");
-const companyDetailsModel = require("../models/companyDetailsModel.js");
+const {
+      companyDetailsModel,
+      Report,
+      ContactUs,
+} = require("../models/companyDetailsModel.js");
 const { Reel, ReelLike, ReelComment } = require("../models/reelsModel.js");
 const {
       PostTimeline,
@@ -71,7 +75,7 @@ const contactUs = asyncHandler(async (req, res) => {
             }
 
             // Create a new ContactUs document
-            contactUsEntry = await companyDetailsModel.ContactUs.create({
+            contactUsEntry = await ContactUs.create({
                   name,
                   email_id,
                   mobile_number,
@@ -91,7 +95,48 @@ const contactUs = asyncHandler(async (req, res) => {
       }
 });
 
+const report = asyncHandler(async (req, res) => {
+      try {
+            // Extract parameters from the request body
+            const { report_type, type_id, title, description } = req.body;
+
+            const user_id = req.user._id;
+            // Validate parameters (you may add more validation as needed)
+            if (
+                  !user_id ||
+                  !report_type ||
+                  !type_id ||
+                  !title ||
+                  !description
+            ) {
+                  return res
+                        .status(400)
+                        .json({ error: "Missing required parameters" });
+            }
+
+            // Create a new Report document
+            const reportEntry = await Report.create({
+                  user_id,
+                  report_type,
+                  type_id,
+                  title,
+                  description,
+            });
+
+            // Send a success response
+            return res.json({
+                  status: true,
+                  message: "Report submitted successfully",
+                  data: reportEntry, // Optionally, you can send the created report data back to the client
+            });
+      } catch (error) {
+            console.error("Error processing report:", error);
+            return res.status(500).json({ error: "Internal server error" });
+      }
+});
+
 module.exports = {
       Checklikestatus,
       contactUs,
+      report,
 };

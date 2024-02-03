@@ -11,7 +11,8 @@ const {
       getReelThumbnails,
       getMyReels,
       getUserReels,
-      getReelsUploadUrlS3
+      getReelsUploadUrlS3,
+      getReel_ByCategory
 } = require("../controllers/reelControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
@@ -24,6 +25,7 @@ reelRoutes.route("/deleteReel").delete(protect, deleteReel);
 reelRoutes.route("/updateReelViewCount").post(protect, updateReelViewCount);
 reelRoutes.route("/getReelComments/:reelId").get(commonProtect, getReelComments);
 reelRoutes.route("/getPaginatedReel/:page").get(commonProtect,getPaginatedReel);
+reelRoutes.route("/getReel_ByCategory").post(commonProtect,getReel_ByCategory);
 reelRoutes.route("/streamReel/:reelId").get(streamReel);
 reelRoutes.route("/getReelThumbnails/:limit").post(getReelThumbnails);
 reelRoutes.route("/getUserReels/:user_id/:page").get(commonProtect,getUserReels);
