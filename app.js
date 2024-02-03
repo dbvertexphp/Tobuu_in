@@ -53,7 +53,7 @@ app.use("/api/subscribe", subscribeRoutes);
 app.use("/api/comman", commanRoutes);
 // --------------------------Routes------------------------------
 
-// --------------------------deployment------------------------------
+// --------------------------deploymentssssss------------------------------
 
 if (process.env.NODE_ENV == "production") {
       app.use(express.static(path.join(__dirname1, "/view")));
