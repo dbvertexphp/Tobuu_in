@@ -98,6 +98,7 @@ const contactUs = asyncHandler(async (req, res) => {
 const report = asyncHandler(async (req, res) => {
       try {
             // Extract parameters from the request body
+            // report_type =  video , timeline , reels
             const { report_type, type_id, title, description } = req.body;
 
             const user_id = req.user._id;
