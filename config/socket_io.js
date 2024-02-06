@@ -17,7 +17,7 @@ const createSocketIO = (server) => {
       const connectedUsers = {};
 
       io.on("connection", (socket) => {
-            // console.log("Connected to socket.io");
+            console.log("Connected to socket.io");
 
             socket.on("setup", (userData) => {
                   socket.join(userData._id);
@@ -31,14 +31,17 @@ const createSocketIO = (server) => {
             });
 
             socket.on("join chat", (room) => {
+                  console.log("join chat room");
                   socket.join(room);
             });
 
             socket.on("typing", (data) => {
+                  console.log("typing");
                   socket.in(data.chatData.room).emit("typing");
             });
 
             socket.on("stop typing", (room) => {
+                  console.log("stop typing");
                   socket.in(room).emit("stop typing");
             });
 
