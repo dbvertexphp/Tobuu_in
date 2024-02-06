@@ -23,6 +23,8 @@ const {
       getProfilePicUploadUrlS3,
       profilePicKey,
       getReview,
+      getUnreadCount,
+      updateProfileDataByAdmin,
 } = require("../controllers/userControllers.js");
 const {
       CreateCalendar,
@@ -68,6 +70,7 @@ userRoutes
       .route("/websiteNotificationToken")
       .post(protect, websiteNotificationToken);
 userRoutes.route("/NotificationList/:limit").get(protect, NotificationList);
+userRoutes.route("/getUnreadCount").get(protect, getUnreadCount);
 userRoutes
       .route("/getProfilePicUploadUrlS3")
       .get(protect, getProfilePicUploadUrlS3);
@@ -87,6 +90,7 @@ userRoutes.route("/getHireByMe").get(protect, getHireByMe);
 /*------------- Admin Routes --------------------- */
 userRoutes.route("/getAllUsers").post(protect, getAllUsers);
 userRoutes.route("/getAllHireList").post(protect, getAllHireList);
+userRoutes.route("/updateProfileDataByAdmin").post(protect, updateProfileDataByAdmin);
 userRoutes.route("/getAllDashboardCount").get(protect, getAllDashboardCount);
 
 module.exports = { userRoutes };

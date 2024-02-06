@@ -478,50 +478,45 @@ const updateProfileData = asyncHandler(async (req, res) => {
             req.body;
       const userId = req.user._id; // Assuming you have user authentication middleware
 
-      // Check if the user exists
-      const user = await User.findById(userId);
+      try {
+            // Update the user's profile fields if they are provided in the request
+            const updatedUser = await User.findByIdAndUpdate(
+                  userId,
+                  {
+                        $set: {
+                              interest: interest,
+                              about_me: about_me,
+                              last_name: last_name,
+                              first_name: first_name,
+                              dob: dob ? new Date(dob) : undefined,
+                              address: address,
+                        },
+                  },
+                  { new: true }
+            ); // Option to return the updated document
 
-      if (!user) {
-            return res.status(200).json({ message: "User not found" });
-      }
+            if (!updatedUser) {
+                  return res.status(404).json({ message: "User not found" });
+            }
 
-      // Update the user's profile fields if they are provided in the request
-      if (interest !== undefined) {
-            user.interest = interest;
+            return res.status(200).json({
+                  _id: updatedUser._id,
+                  interest: updatedUser.interest,
+                  about_me: updatedUser.about_me,
+                  address: updatedUser.address,
+                  last_name: updatedUser.last_name,
+                  first_name: updatedUser.first_name,
+                  dob: updatedUser.dob,
+                  pic: updatedUser.pic,
+                  email: updatedUser.email,
+                  mobile: updatedUser.mobile,
+                  username: updatedUser.username,
+                  status: true,
+            });
+      } catch (error) {
+            console.error("Error updating user profile:", error.message);
+            return res.status(500).json({ error: "Internal Server Error" });
       }
-      if (about_me !== undefined) {
-            user.about_me = about_me;
-      }
-      if (last_name !== undefined) {
-            user.last_name = last_name;
-      }
-      if (first_name !== undefined) {
-            user.first_name = first_name;
-      }
-      if (dob !== undefined) {
-            user.dob = new Date(dob);
-      }
-      if (address !== undefined) {
-            user.address = address;
-      }
-
-      // Save the updated user profile
-      const updatedUser = await user.save();
-
-      return res.status(200).json({
-            _id: updatedUser._id,
-            interest: updatedUser.interest,
-            about_me: updatedUser.about_me,
-            address: updatedUser.address,
-            last_name: updatedUser.last_name,
-            first_name: updatedUser.first_name,
-            dob: updatedUser.dob,
-            pic: updatedUser.pic,
-            email: user.email,
-            mobile: user.mobile,
-            username: user.username,
-            status: true,
-      });
 });
 
 const forgetPassword = asyncHandler(async (req, res) => {
@@ -722,6 +717,32 @@ const getAllUsers = asyncHandler(async (req, res) => {
                   message: "Internal Server Error",
                   status: false,
             });
+      }
+});
+
+const updateProfileDataByAdmin = asyncHandler(async (req, res) => {
+      const { edit_mobile_name, userId } = req.body;
+
+      try {
+            // Update only the mobile number
+            const updatedUser = await User.findOneAndUpdate(
+                  { _id: userId },
+                  { $set: { mobile: edit_mobile_name } },
+                  { new: true } // Option to return the updated document
+            );
+
+            if (!updatedUser) {
+                  return res.status(404).json({ message: "User not found" });
+            }
+
+            return res.status(200).json({
+                  _id: updatedUser._id,
+                  mobile: updatedUser.mobile,
+                  status: true,
+            });
+      } catch (error) {
+            console.error("Error updating mobile number:", error.message);
+            return res.status(500).json({ error: "Internal Server Error" });
       }
 });
 
@@ -1023,6 +1044,27 @@ const NotificationList = asyncHandler(async (req, res) => {
             res.status(500).json({ error: "Internal Server Error" });
       }
 });
+const getUnreadCount = async (req, res) => {
+      try {
+            const user_id = req.user._id;
+            const unreadNotifications = await NotificationMessages.find({
+                  receiver_id: user_id,
+                  readstatus: false,
+            });
+
+            let unreadCount = unreadNotifications.length;
+            if (unreadCount > 10) {
+                  unreadCount = 10;
+            } else if (unreadCount == 0) {
+                  unreadCount = "";
+            }
+
+            return res.status(200).json({ status: true, Count: unreadCount });
+      } catch (error) {
+            console.error("Error getting unread count:", error.message);
+            throw new Error("Error getting unread count");
+      }
+};
 
 const calculateTimeDifference = (datetime) => {
       try {
@@ -1110,9 +1152,9 @@ function TextLocalApi(type, name, mobile, otp) {
       const sendSms = async () => {
             try {
                   const response = await axios.post(url);
-                  // console.log("response", response.data);
+                  console.log("response", response.data);
             } catch (error) {
-                  //console.error("error", error.message);
+                  console.error("error", error.message);
             }
       };
 
@@ -1154,4 +1196,6 @@ module.exports = {
       getProfilePicUploadUrlS3,
       profilePicKey,
       getReview,
+      getUnreadCount,
+      updateProfileDataByAdmin,
 };
