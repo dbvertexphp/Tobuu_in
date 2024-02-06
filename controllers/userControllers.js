@@ -831,6 +831,64 @@ const addReview = asyncHandler(async (req, res) => {
       }
 });
 
+const getReview = asyncHandler(async (req, res) => {
+      try {
+            const user_id = req.params.id;
+            const page = req.query.page || 1;
+            const pageSize = 10;
+
+            const notifications = await Review.find({
+                  my_id: user_id,
+            })
+                  .sort({ datetime: -1 })
+                  .skip((page - 1) * pageSize)
+                  .limit(pageSize);
+
+            if (!notifications || notifications.length === 0) {
+                  return res
+                        .status(200)
+                        .json({ status: false, notifications: [] });
+            }
+
+            const notificationList = await Promise.all(
+                  notifications.map(async (notification) => {
+                        const senderDetails = await User.findById(
+                              notification.review_id
+                        );
+
+                        const sender = {
+                              _id: senderDetails._id,
+                              first_name: senderDetails.first_name,
+                              last_name: senderDetails.last_name,
+                              pic: `${senderDetails.pic}`,
+                        };
+
+                        const notificationWithSender = {
+                              _id: notification._id,
+                              sender,
+                              message: notification.message,
+                              description: notification.description,
+                              type: notification.type,
+                              time: calculateTimeDifference(
+                                    notification.datetime
+                              ),
+                              date: notification.datetime.split(" ")[0],
+                        };
+
+                        return notificationWithSender;
+                  })
+            );
+
+            res.status(200).json({
+                  status: true,
+                  reviews: notificationList,
+            });
+      } catch (error) {
+            console.error("Error getting notification list:", error.message);
+            res.status(500).json({ error: "Internal Server Error" });
+      }
+});
+
 const Watch_time_update = asyncHandler(async (req, res) => {
       try {
             const { time } = req.body;
@@ -1095,4 +1153,5 @@ module.exports = {
       ForgetresendOTP,
       getProfilePicUploadUrlS3,
       profilePicKey,
+      getReview,
 };
