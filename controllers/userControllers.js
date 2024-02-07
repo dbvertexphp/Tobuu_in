@@ -88,19 +88,28 @@ const getUserView = asyncHandler(async (req, res) => {
             if (token) {
                   // Check karein ki user ne current post ko like kiya hai ya nahi
                   const isFriend = await MyFriends.exists({
-                        my_id: user_id._id,
-                        friends_id: req.user._id,
+                        $or: [
+                              { my_id: req.user._id, friends_id: user_id._id },
+                              { my_id: user_id._id, friends_id: req.user._id },
+                        ],
                   });
 
                   const isRequestPending = await MyFriends.exists({
                         my_id: user_id._id,
                         request_id: req.user._id,
                   });
+                  const isRequestAccept = await MyFriends.exists({
+                        my_id: req.user._id,
+                        request_id: user_id._id,
+                  });
+
                   // User ne post ko like kiya hai ya nahi, is par based Friend_status set karein
                   if (isFriend) {
                         Friend_status = "Yes";
                   } else if (isRequestPending) {
                         Friend_status = "Pending";
+                  } else if (isRequestAccept) {
+                        Friend_status = "Accept";
                   }
             }
 
@@ -363,9 +372,10 @@ const resendOTP = asyncHandler(async (req, res) => {
       }
 
       // Update the user's otp field with the new OTP
-      user.otp = newOTP;
-      //user.otp_verified = 0; // Reset otp_verified status
-      await user.save();
+      const result = await User.updateOne(
+            { _id: user._id },
+            { $set: { otp: newOTP } }
+      );
 
       // Send the new OTP to the user (you can implement this logic)
 
@@ -997,7 +1007,7 @@ const NotificationList = asyncHandler(async (req, res) => {
             const notifications = await NotificationMessages.find({
                   receiver_id: user_id,
             })
-                  .sort({ createdAt: -1 })
+                  .sort({ datetime: -1 })
                   .skip((page - 1) * pageSize)
                   .limit(pageSize);
 
@@ -1006,6 +1016,16 @@ const NotificationList = asyncHandler(async (req, res) => {
                         .status(200)
                         .json({ status: false, notifications: [] });
             }
+
+            await Promise.all(
+                  notifications.map(async (notification) => {
+                        // Update readstatus to true for the current notification
+                        await NotificationMessages.findByIdAndUpdate(
+                              notification._id,
+                              { readstatus: true }
+                        );
+                  })
+            );
 
             const notificationList = await Promise.all(
                   notifications.map(async (notification) => {
@@ -1044,6 +1064,32 @@ const NotificationList = asyncHandler(async (req, res) => {
             res.status(500).json({ error: "Internal Server Error" });
       }
 });
+
+const getNotificationId = asyncHandler(async (req, res) => {
+      try {
+            const sender_id = req.body.sender_id;
+            const type = req.body.type; // Assuming user_id is provided as a query parameter
+            const receiver_id = req.user._id;
+
+            const notifications = await NotificationMessages.findOne(
+                  {
+                        sender_id: sender_id,
+                        receiver_id: receiver_id,
+                        type: type, // Filtering by type 'Friend_Request'
+                  },
+                  "_id"
+            ); // Only selecting the _id field
+
+            res.status(200).json({
+                  status: true,
+                  notificetion_id: notifications,
+            });
+      } catch (error) {
+            console.error("Error getting notifications:", error.message);
+            res.status(500).json({ error: "Internal Server Error" });
+      }
+});
+
 const getUnreadCount = async (req, res) => {
       try {
             const user_id = req.user._id;
@@ -1198,4 +1244,5 @@ module.exports = {
       getReview,
       getUnreadCount,
       updateProfileDataByAdmin,
+      getNotificationId,
 };

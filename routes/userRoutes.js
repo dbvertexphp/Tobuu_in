@@ -25,6 +25,7 @@ const {
       getReview,
       getUnreadCount,
       updateProfileDataByAdmin,
+      getNotificationId,
 } = require("../controllers/userControllers.js");
 const {
       CreateCalendar,
@@ -70,6 +71,7 @@ userRoutes
       .route("/websiteNotificationToken")
       .post(protect, websiteNotificationToken);
 userRoutes.route("/NotificationList/:limit").get(protect, NotificationList);
+userRoutes.route("/getNotificationId").post(protect, getNotificationId);
 userRoutes.route("/getUnreadCount").get(protect, getUnreadCount);
 userRoutes
       .route("/getProfilePicUploadUrlS3")
@@ -90,7 +92,9 @@ userRoutes.route("/getHireByMe").get(protect, getHireByMe);
 /*------------- Admin Routes --------------------- */
 userRoutes.route("/getAllUsers").post(protect, getAllUsers);
 userRoutes.route("/getAllHireList").post(protect, getAllHireList);
-userRoutes.route("/updateProfileDataByAdmin").post(protect, updateProfileDataByAdmin);
+userRoutes
+      .route("/updateProfileDataByAdmin")
+      .post(protect, updateProfileDataByAdmin);
 userRoutes.route("/getAllDashboardCount").get(protect, getAllDashboardCount);
 
 module.exports = { userRoutes };
