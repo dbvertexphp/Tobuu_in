@@ -15,6 +15,126 @@ const {
 } = require("../config/aws-s3.js");
 require("dotenv").config();
 
+const getAllVideo = asyncHandler(async (req, res) => {
+      const page = parseInt(req.params.page) || 1;
+      const limit = parseInt(req.query.limit) || 5;
+      const startIndex = (page - 1) * limit;
+
+      try {
+            let videoQuery = Video.find();
+
+            // Check if category_id is provided in the request body
+            if (req.body.category_id) {
+                  videoQuery = videoQuery.where({
+                        category_id: req.body.category_id,
+                  });
+            }
+
+            // Use Mongoose to fetch paginated videos from the database
+            const paginatedVideos = await videoQuery
+                  .skip(startIndex)
+                  .limit(limit)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic", // Adjust these fields based on your User schema
+                  })
+                  .populate({
+                        path: "category_id",
+                        select: "category_name", // Adjust this field based on your Category schema
+                  });
+
+            const totalVideos = await Video.countDocuments(
+                  videoQuery.getQuery()
+            );
+            const hasMore = startIndex + paginatedVideos.length < totalVideos;
+
+            if (paginatedVideos.length === 0) {
+                  return res.json({
+                        message: "Video Not Found",
+                        status: true,
+                  });
+            }
+
+            // Transform and exclude specific fields in the response
+            const transformedVideos = [];
+            const token = req.header("Authorization");
+
+            for (const video of paginatedVideos) {
+                  const { video_name, updatedAt, __v, ...response } =
+                        video._doc;
+
+                  let like_status = "No";
+                  let subscribe_status = "No";
+                  let like_count = 0;
+
+                  // Get the total like count for each video
+                  const videoLikeCount = await VideoLike.findOne({
+                        video_id: video._id,
+                  }).select("count");
+
+                  if (videoLikeCount) {
+                        like_count = videoLikeCount.count;
+                  }
+
+                  const pic_name_url = await getSignedUrlS3(video.user_id.pic);
+                  const updatedUser = {
+                        ...video.user_id._doc,
+                        pic: pic_name_url,
+                  };
+
+                  if (token) {
+                        // Check if the user has liked the current video
+                        const isLiked = await VideoLike.exists({
+                              video_id: video._id,
+                              user_ids: req.user._id,
+                        });
+
+                        like_status = isLiked ? "Yes" : "No";
+
+                        // Check if the user has subscribed to the author
+                        const isSubscribed = await Subscribes.exists({
+                              my_id: video.user_id?._id,
+                              subscriber_id: req.user?._id,
+                        });
+
+                        subscribe_status = isSubscribed ? "Yes" : "No";
+                  }
+
+                  const thumbnail_name_url = await getSignedUrlS3(
+                        video.thumbnail_name
+                  );
+                  const video_name_url = await getSignedUrlS3(video.video_name);
+
+                  transformedVideos.push({
+                        ...response,
+                        video_url: video_name_url,
+                        thumbnail_name: thumbnail_name_url,
+                        user_id: updatedUser,
+                        like_count,
+                        like_status,
+                        subscribe_status,
+                  });
+            }
+
+            // Now transformedVideos contains the updated videos with like_count, like_status, and subscribe_status
+
+            res.json({
+                  page,
+                  limit,
+                  status: true,
+                  data: transformedVideos,
+                  hasMore,
+                  totalVideos,
+            });
+      } catch (error) {
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  error: error.message,
+                  status: false,
+            });
+      }
+});
+
 const uploadVideo = asyncHandler(async (req, res) => {
       const { category_id, description, title, video_key, thumbnail_key } =
             req.body;
@@ -844,4 +964,5 @@ module.exports = {
       getVideosThumbnails,
       getUserVideos,
       getVideoUploadUrlS3,
+      getAllVideo,
 };

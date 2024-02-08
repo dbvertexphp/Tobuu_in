@@ -11,6 +11,8 @@ const {
       getReelThumbnails,
       getMyReels,
       getUserReels,
+      getAllReels,
+      statusUpdate,
       getReelsUploadUrlS3
 } = require("../controllers/reelControllers.js");
 const protect = require("../middleware/authMiddleware.js");
@@ -29,5 +31,7 @@ reelRoutes.route("/getReelThumbnails/:limit").post(getReelThumbnails);
 reelRoutes.route("/getUserReels/:user_id/:page").get(commonProtect,getUserReels);
 reelRoutes.route("/getMyReels").get(protect, getMyReels);
 reelRoutes.route("/getReelsUploadUrlS3").get(protect, getReelsUploadUrlS3);
+reelRoutes.route("/getAllReels").post(protect, getAllReels);
+reelRoutes.route("/statusUpdate").post(protect, statusUpdate);
 
 module.exports = { reelRoutes };

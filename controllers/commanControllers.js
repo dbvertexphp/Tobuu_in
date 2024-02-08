@@ -11,6 +11,8 @@ const {
 } = require("../models/posttimelineModel.js");
 const path = require("path");
 require("dotenv").config();
+const baseURL = process.env.BASE_URL;
+
 
 const Checklikestatus = asyncHandler(async (req, res) => {
       try {
@@ -91,7 +93,84 @@ const contactUs = asyncHandler(async (req, res) => {
       }
 });
 
+const getAllContact = asyncHandler(async (req, res) => {
+      const { page = 1, search = "" } = req.body;
+      const perPage = 2; // You can adjust this according to your requirements
+  
+      // Build the query based on search
+      const query = search
+          ? {
+              $or: [
+                  { message: { $regex: search, $options: "i" } },
+              ],
+          }
+          : {};
+  
+      try {
+          const reels = await companyDetailsModel.ContactUs.find(query)
+              .skip((page - 1) * perPage)
+              .limit(perPage);
+              
+  
+          const totalCount = await companyDetailsModel.ContactUs.countDocuments(query);
+          const totalPages = Math.ceil(totalCount / perPage);
+  
+          
+          const transformedReels = reels.map((reel) => {
+              let transformedReel = { ...reel.toObject() }; // Convert Mongoose document to plain JavaScript object
+  
+  
+              return { user: transformedReel};
+          });
+  
+          const paginationDetails = {
+              current_page: parseInt(page),
+              data: transformedReels,
+              first_page_url: `${baseURL}api/users?page=1`,
+              from: (page - 1) * perPage + 1,
+              last_page: totalPages,
+              last_page_url: `${baseURL}api/users?page=${totalPages}`,
+              links: [
+                  {
+                      url: null,
+                      label: "&laquo; Previous",
+                      active: false,
+                  },
+                  {
+                      url: `${baseURL}api/users?page=${page}`,
+                      label: page.toString(),
+                      active: true,
+                  },
+                  {
+                      url: null,
+                      label: "Next &raquo;",
+                      active: false,
+                  },
+              ],
+              next_page_url: null,
+              path: `${baseURL}api/users`,
+              per_page: perPage,
+              prev_page_url: null,
+              to: (page - 1) * perPage + transformedReels.length,
+              total: totalCount,
+          };
+  
+          res.json({
+              Users: paginationDetails,
+              page: page.toString(),
+              total_rows: totalCount,
+          });
+      } catch (error) {
+          console.error(error);
+          res.status(500).json({
+              message: "Internal Server Error",
+              status: false,
+          });
+      }
+  });
+
 module.exports = {
       Checklikestatus,
       contactUs,
+      getAllContact,
 };

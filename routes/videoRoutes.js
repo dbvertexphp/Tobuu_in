@@ -2,6 +2,7 @@ const express = require("express");
 const {
       uploadVideo,
       getPaginatedVideos,
+      getAllVideo,
       streamVideo,
       updateVideoLike,
       addVideoComment,
@@ -25,6 +26,7 @@ videoRoutes.route("/deleteVideo").delete(protect, deleteVideo);
 videoRoutes.route("/updateVideoViewCount").post(protect, updateVideoViewCount);
 videoRoutes.route("/getVideoComments/:videoId").get(commonProtect, getVideoComments);
 videoRoutes.route("/getPaginatedVideos/:page").post(commonProtect,getPaginatedVideos);
+videoRoutes.route("/getAllVideo/:page").post(commonProtect, getAllVideo);
 videoRoutes.route("/streamVideo/:videoId").get(streamVideo);
 videoRoutes.route("/getVideosThumbnails/:limit").post(getVideosThumbnails);
 videoRoutes.route("/getUserVideos/:user_id/:page").get(commonProtect, getUserVideos);

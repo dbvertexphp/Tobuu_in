@@ -9,6 +9,10 @@ const {
       AdminDashboard,
       WebNotification,
 } = require("../models/userModel.js");
+const { Reel, ReelLike, ReelComment } = require("../models/reelsModel.js");
+const { Video, VideoLike, VideoComment } = require("../models/videoModel.js");
+const Category = require("../models/categoryModel.js");
+
 const Review = require("../models/reviewModel.js");
 const BankDetails = require("../models/bankdetailsModel.js");
 const multer = require("multer");
@@ -644,7 +648,7 @@ const getBankDetails = asyncHandler(async (req, res) => {
 
 const getAllUsers = asyncHandler(async (req, res) => {
       const { page = 1, search = "" } = req.body;
-      const perPage = 10; // You can adjust this according to your requirements
+      const perPage = 2; // You can adjust this according to your requirements
 
       // Build the query based on search
       const query = search
@@ -727,8 +731,11 @@ const getAllUsers = asyncHandler(async (req, res) => {
 
 const getAllDashboardCount = asyncHandler(async (req, res) => {
       try {
-            const dashboardCounts = await AdminDashboard.findOne(); // Assuming there is only one document
-            res.status(200).json({ counts: dashboardCounts });
+            const category = await Category.countDocuments(); // Assuming there is only one document
+            const user = await User.countDocuments();
+            const video = await Video.countDocuments();
+            const reels = await Reel.countDocuments();
+            res.status(200).json({ category: category ,user:user,video:video,reels:reels});
       } catch (error) {
             console.error("Error getting dashboard counts:", error);
             res.status(500).json({

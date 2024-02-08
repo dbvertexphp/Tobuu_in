@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const dotenv = require("dotenv");
 require("dotenv").config();
+const baseURL = process.env.BASE_URL;
 const {
       PostTimeline,
       PostTimelineLike,
@@ -669,7 +670,108 @@ const getUserTimeline = asyncHandler(async (req, res) => {
             });
       }
 });
+const getAllTimeline = asyncHandler(async (req, res) => {
+      const { page = 1, search = "" } = req.body;
+      const perPage = 2; // You can adjust this according to your requirements
 
+      // Build the query based on search
+      const query = search
+            ? {
+                    $or: [
+                          { description: { $regex: search, $options: "i" } },
+                        
+                    ],
+              }
+            : {};
+
+      try {
+            const users = await PostTimeline.find(query)
+                  .skip((page - 1) * perPage)
+                  .limit(perPage)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic",
+                    })
+                    .populate({
+                        path: "category_id",
+                        select: "category_name",
+                    });
+
+            const totalCount = await PostTimeline.countDocuments(query);
+            const totalPages = Math.ceil(totalCount / perPage);
+
+            const transformedUsers = users.map((user) => {
+                  let transformedUser = { ...user.toObject() }; // Convert Mongoose document to plain JavaScript object
+                 
+                  return { user: transformedUser };
+            });
+
+            const paginationDetails = {
+                  current_page: parseInt(page),
+                  data: transformedUsers,
+                  first_page_url: `${baseURL}api/users?page=1`,
+                  from: (page - 1) * perPage + 1,
+                  last_page: totalPages,
+                  last_page_url: `${baseURL}api/users?page=${totalPages}`,
+                  links: [
+                        {
+                              url: null,
+                              label: "&laquo; Previous",
+                              active: false,
+                        },
+                        {
+                              url: `${baseURL}api/users?page=${page}`,
+                              label: page.toString(),
+                              active: true,
+                        },
+                        {
+                              url: null,
+                              label: "Next &raquo;",
+                              active: false,
+                        },
+                  ],
+                  next_page_url: null,
+                  path: `${baseURL}api/users`,
+                  per_page: perPage,
+                  prev_page_url: null,
+                  to: (page - 1) * perPage + transformedUsers.length,
+                  total: totalCount,
+            };
+
+            res.json({
+                  Users: paginationDetails,
+                  page: page.toString(),
+                  total_rows: totalCount,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+const statusUpdate = async (req, res) => {
+    
+      const { status } = req.body;
+      const { id } = req.body;
+    
+      try {
+        const reel = await PostTimeline.findById(id);
+    
+        if (!reel) {
+          return res.status(200).json({ message: 'Project not found', status: false });
+        }
+    
+        reel.status = status;
+        await reel.save();
+    
+        return res.status(200).json({ message: 'Status updated successfully', status: true });
+      } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Internal Server Error', status: false });
+      }
+    };
 module.exports = {
       uploadPostTimeline,
       getPaginatedTimeline,
@@ -680,4 +782,6 @@ module.exports = {
       Timelinedelete,
       getMyTimeline,
       getUserTimeline,
+      getAllTimeline,
+      statusUpdate,
 };

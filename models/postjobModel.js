@@ -10,6 +10,7 @@ const jobSchema = mongoose.Schema(
             },
             description: { type: String, maxlength: 2000 }, // Adjust the maxlength as needed
             job_status: { type: String, default: "Open" },
+            status: { type: Number, default: 0 },
             datetime: {
                   type: String,
                   default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),

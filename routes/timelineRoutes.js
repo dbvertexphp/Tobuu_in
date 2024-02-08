@@ -8,7 +8,9 @@ const {
   getTimelineComments,
   Timelinedelete,
   getMyTimeline,
-  getUserTimeline
+  getUserTimeline,
+  getAllTimeline,
+  statusUpdate
 } = require("../controllers/timelineControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
@@ -23,6 +25,10 @@ timelineRoutes.route('/getPaginatedTimeline/:page').post(commonProtect,getPagina
 timelineRoutes.route("/updatePostTimelineLike").post(protect, updatePostTimelineLike);
 timelineRoutes.route("/getUserTimeline/:user_id/:page").get(commonProtect,getUserTimeline);
 timelineRoutes.route("/getMyTimeline").get(protect, getMyTimeline);
+timelineRoutes.route("/getAllTimeline").post(protect,getAllTimeline);
+timelineRoutes.route("/statusUpdate").post(protect,statusUpdate);
+
+
 
 
 module.exports = { timelineRoutes };

@@ -2,6 +2,7 @@ const asyncHandler = require("express-async-handler");
 const { PostJob, AppliedUser } = require("../models/postjobModel.js");
 const { AdminDashboard } = require("../models/userModel.js");
 require("dotenv").config();
+const baseURL = process.env.BASE_URL;
 const { getSignedUrlS3 } = require("../config/aws-s3.js");
 
 const uploadPostJob = asyncHandler(async (req, res) => {
@@ -51,7 +52,7 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
       const startIndex = (page - 1) * limit;
 
       try {
-            const paginatedJobs = await PostJob.find()
+            const paginatedJobs = await PostJob.find({ status: 0 })
                   .sort({ createdAt: -1 })
                   .skip(startIndex)
                   .limit(limit)
@@ -437,6 +438,115 @@ const updateJobStatus = asyncHandler(async (req, res) => {
       }
 });
 
+const getAllJob = asyncHandler(async (req, res) => {
+      const { page = 1, search = "" } = req.body;
+      const perPage = 5; // You can adjust this according to your requirements
+  
+      // Build the query based on search
+      const query = search
+          ? {
+              $or: [
+                  { description: { $regex: search, $options: "i" } },
+                  // Add more fields to search if needed
+              ],
+            }
+          : {};
+  
+      try {
+          // Fetch job posts based on the query, with pagination
+          const jobPosts = await PostJob.find(query)
+              .skip((page - 1) * perPage)
+              .limit(perPage)
+              .populate({
+                  path: "user_id",
+                  select: "first_name last_name pic",
+              })
+              .populate({
+                  path: "category_id",
+                  select: "category_name",
+              });
+  
+          // Get total count of job posts matching the query
+          const totalCount = await PostJob.countDocuments(query);
+  
+          // Calculate total pages based on total count and per page limit
+          const totalPages = Math.ceil(totalCount / perPage);
+  
+          // Transform job posts to include necessary fields
+          const transformedJobPosts = jobPosts.map((user) => {
+            let transformedUser = { ...user.toObject() }; // Convert Mongoose document to plain JavaScript object
+                 
+            return { user: transformedUser };
+          });
+  
+          // Prepare pagination details for response
+          const paginationDetails = {
+              current_page: parseInt(page),
+              data: transformedJobPosts,
+              first_page_url: `${baseURL}api/jobs?page=1`,
+              from: (page - 1) * perPage + 1,
+              last_page: totalPages,
+              last_page_url: `${baseURL}api/jobs?page=${totalPages}`,
+              links: [
+                  {
+                      url: null,
+                      label: "&laquo; Previous",
+                      active: false,
+                  },
+                  {
+                      url: `${baseURL}api/jobs?page=${page}`,
+                      label: page.toString(),
+                      active: true,
+                  },
+                  {
+                      url: null,
+                      label: "Next &raquo;",
+                      active: false,
+                  },
+              ],
+              next_page_url: null,
+              path: `${baseURL}api/jobs`,
+              per_page: perPage,
+              prev_page_url: null,
+              to: (page - 1) * perPage + transformedJobPosts.length,
+              total: totalCount,
+          };
+  
+          // Send response with pagination details
+          res.json({
+              Jobs: paginationDetails,
+              page: page.toString(),
+              total_rows: totalCount,
+          });
+      } catch (error) {
+          console.error(error);
+          res.status(500).json({
+              message: "Internal Server Error",
+              status: false,
+          });
+      }
+  });
+  const statusUpdate = async (req, res) => {
+    
+      const { status } = req.body;
+      const { id } = req.body;
+    
+      try {
+        const reel = await PostJob.findById(id);
+    
+        if (!reel) {
+          return res.status(200).json({ message: 'Project not found', status: false });
+        }
+    
+        reel.status = status;
+        await reel.save();
+    
+        return res.status(200).json({ message: 'Status updated successfully', status: true });
+      } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Internal Server Error', status: false });
+      }
+    };
 module.exports = {
       uploadPostJob,
       getPaginatedJob,
@@ -445,4 +555,6 @@ module.exports = {
       getAppliedUsers,
       getMyJobs,
       updateJobStatus,
+      getAllJob,
+      statusUpdate,
 };

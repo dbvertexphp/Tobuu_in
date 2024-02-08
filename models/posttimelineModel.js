@@ -10,6 +10,7 @@ const timelineSchema = mongoose.Schema({
       comment_count: { type: Number, default: 0 },
       view_count: { type: Number, default: 0 },
       description: { type: String, maxlength: 2000 },
+      status: { type: Number, default: 0 },
       datetime: {
             type: String,
             default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),

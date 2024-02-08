@@ -1,4 +1,6 @@
 const mongoose = require("mongoose");
+
+const Schema = mongoose.Schema;
 const bcrypt = require("bcryptjs");
 const format = require("date-fns");
 const moment = require("moment-timezone");
@@ -49,8 +51,9 @@ const adminDashboardSchema = new mongoose.Schema({
       post_count: { type: Number, default: 0 },
       user_count: { type: Number, default: 0 },
       job_count: { type: Number, default: 0 },
-      payment_count: { type: Number, default: 0 },
 });
+
+
 
 const websiteNotificationToken = mongoose.Schema({
       user_id: {
