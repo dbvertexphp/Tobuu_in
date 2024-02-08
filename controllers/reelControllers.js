@@ -928,103 +928,115 @@ const getReelsUploadUrlS3 = asyncHandler(async (req, res) => {
 const getAllReels = asyncHandler(async (req, res) => {
       const { page = 1, search = "" } = req.query; // Using req.query for query parameters
       const perPage = 2;
-  
-      const query = search ? {
-          description: { $regex: search, $options: "i" }
-      } : {};
-  
-      try {
-          const reels = await Reel.find(query)
-              .skip((page - 1) * perPage)
-              .limit(perPage)
-              .populate({
-                  path: "user_id",
-                  select: "first_name last_name pic",
-              })
-              .populate({
-                  path: "category_id",
-                  select: "category_name",
-              });
-  
-          const totalCount = await Reel.countDocuments(query);
-          const totalPages = Math.ceil(totalCount / perPage);
-  
-          const transformedReels = await Promise.all(reels.map(async reel => {
-            let transformedReel = { ...reel.toObject() };
-            if (transformedReel.thumbnail_name) {
-                transformedReel.thumbnail_name = await getSignedUrlS3(reel.thumbnail_name);
-            }
-            return transformedReel;
-        }));
-  
-        const paginationDetails = {
-            current_page: parseInt(page),
-            data: transformedReels,
-            first_page_url: `${baseURL}api/reels?page=1`,
-            from: (page - 1) * perPage + 1,
-            last_page: totalPages,
-            last_page_url: `${baseURL}api/reels?page=${totalPages}`,
-            links: [
-                {
-                    url: null,
-                    label: "&laquo; Previous",
-                    active: false,
-                },
-                {
-                    url: `${baseURL}api/reels?page=${page}`,
-                    label: page.toString(),
-                    active: true,
-                },
-                {
-                    url: null,
-                    label: "Next &raquo;",
-                    active: false,
-                },
-            ],
-            next_page_url: null,
-            path: `${baseURL}api/reels`,
-            per_page: perPage,
-            prev_page_url: null,
-            to: (page - 1) * perPage + transformedReels.length,
-            total: totalCount,
-        };
-  
-          res.json({
-              Reels: paginationDetails,
-              page: page.toString(),
-              total_rows: totalCount,
-          });
-      } catch (error) {
-          console.error(error);
-          res.status(500).json({
-              message: "Internal Server Error",
-              status: false,
-          });
-      }
-  });
 
+      const query = search
+            ? {
+                    description: { $regex: search, $options: "i" },
+              }
+            : {};
+
+      try {
+            const reels = await Reel.find(query)
+                  .skip((page - 1) * perPage)
+                  .limit(perPage)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic",
+                  })
+                  .populate({
+                        path: "category_id",
+                        select: "category_name",
+                  });
+
+            const totalCount = await Reel.countDocuments(query);
+            const totalPages = Math.ceil(totalCount / perPage);
+
+            const transformedReels = await Promise.all(
+                  reels.map(async (reel) => {
+                        let transformedReel = { ...reel.toObject() };
+                        if (transformedReel.thumbnail_name) {
+                              transformedReel.thumbnail_name =
+                                    await getSignedUrlS3(reel.thumbnail_name);
+                        }
+                        return transformedReel;
+                  })
+            );
+
+            const paginationDetails = {
+                  current_page: parseInt(page),
+                  data: transformedReels,
+                  first_page_url: `${baseURL}api/reels?page=1`,
+                  from: (page - 1) * perPage + 1,
+                  last_page: totalPages,
+                  last_page_url: `${baseURL}api/reels?page=${totalPages}`,
+                  links: [
+                        {
+                              url: null,
+                              label: "&laquo; Previous",
+                              active: false,
+                        },
+                        {
+                              url: `${baseURL}api/reels?page=${page}`,
+                              label: page.toString(),
+                              active: true,
+                        },
+                        {
+                              url: null,
+                              label: "Next &raquo;",
+                              active: false,
+                        },
+                  ],
+                  next_page_url: null,
+                  path: `${baseURL}api/reels`,
+                  per_page: perPage,
+                  prev_page_url: null,
+                  to: (page - 1) * perPage + transformedReels.length,
+                  total: totalCount,
+            };
+
+            res.json({
+                  Reels: paginationDetails,
+                  page: page.toString(),
+                  total_rows: totalCount,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
 
 const statusUpdate = async (req, res) => {
-   
       const { status } = req.body;
       const { id } = req.body;
-    
+
       try {
-        const reel = await Reel.findById(id);
-    
-        if (!reel) {
-          return res.status(200).json({ message: 'Project not found', status: false });
-        }
-    
-        reel.status = status;
-        await reel.save();
-    
-        return res.status(200).json({ message: 'Status updated successfully', status: true });
+            const reel = await Reel.findById(id);
+
+            if (!reel) {
+                  return res
+                        .status(200)
+                        .json({ message: "Project not found", status: false });
+            }
+
+            reel.status = status;
+            await reel.save();
+
+            return res
+                  .status(200)
+                  .json({
+                        message: "Status updated successfully",
+                        status: true,
+                  });
       } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'Internal Server Error', status: false });
+            console.error(error);
+            return res
+                  .status(500)
+                  .json({ message: "Internal Server Error", status: false });
       }
-    };
+};
 
 module.exports = {
       uploadReel,
@@ -1041,4 +1053,5 @@ module.exports = {
       getReelsUploadUrlS3,
       getAllReels,
       statusUpdate,
+      getReel_ByCategory,
 };
