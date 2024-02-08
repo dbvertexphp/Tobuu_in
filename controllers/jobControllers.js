@@ -51,7 +51,7 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
       const startIndex = (page - 1) * limit;
 
       try {
-            const paginatedJobs = await PostJob.find()
+            let jobQuery = PostJob.find()
                   .sort({ createdAt: -1 })
                   .skip(startIndex)
                   .limit(limit)
@@ -62,8 +62,16 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
                   .populate({
                         path: "user_id",
                         select: "first_name last_name pic",
-                  })
-                  .exec();
+                  });
+
+            // Check if category_id is provided in the request body
+            if (req.body.category_id) {
+                  jobQuery = jobQuery
+                        .where("category_id")
+                        .equals(req.body.category_id);
+            }
+
+            const paginatedJobs = await jobQuery.exec();
 
             const totalJobs = await PostJob.countDocuments();
             const hasMore = startIndex + paginatedJobs.length < totalJobs;
@@ -75,10 +83,11 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
                   });
             }
 
-            // Check if a token is present in the request header
+            // Remaining code for processing and returning the response...
+            // This part of the code remains the same as before
+            // You can include the logic for modifying and returning the response data here
             const token = req.header("Authorization");
 
-            // Iterate through jobs to get apply status and add additional fields
             const jobsWithAdditionalInfo = await Promise.all(
                   paginatedJobs.map(async (job) => {
                         let apply_status = "No"; // Move the declaration inside the loop
@@ -117,7 +126,7 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
                   page,
                   limit,
                   status: true,
-                  data: jobsWithAdditionalInfo,
+                  data: jobsWithAdditionalInfo, // Return the paginated jobs data
                   hasMore,
             });
       } catch (error) {
@@ -143,6 +152,9 @@ const appliedPostJob = asyncHandler(async (req, res) => {
                   user_id,
             });
 
+            const jobData = await PostJob.findOne({
+                  _id: job_id,
+            });
             if (job) {
                   return res.json({
                         message: "You cannot apply to your own job.",
@@ -172,6 +184,7 @@ const appliedPostJob = asyncHandler(async (req, res) => {
                   const newApplication = new AppliedUser({
                         user_ids: [user_id],
                         job_id,
+                        category_id: jobData.category_id,
                   });
                   await newApplication.save();
 
@@ -191,21 +204,27 @@ const appliedPostJob = asyncHandler(async (req, res) => {
 
 const getAppliedJobs = asyncHandler(async (req, res) => {
       const user_id = req.user._id;
+      const { category_id } = req.body; // Extract category_id from request body
 
       try {
-            // Use Mongoose to fetch applied jobs from the database
-            const appliedJobs = await AppliedUser.find({ user_ids: user_id })
-                  .populate({
-                        path: "job_id",
-                        populate: [
-                              { path: "category_id", select: "category_name" },
-                              {
-                                    path: "user_id",
-                                    select: "first_name pic last_name",
-                              },
-                        ],
-                  })
-                  .exec();
+            let appliedJobsQuery = AppliedUser.find({
+                  user_ids: user_id,
+            }).populate({
+                  path: "job_id",
+                  populate: [
+                        { path: "category_id", select: "category_name" },
+                        { path: "user_id", select: "first_name pic last_name" },
+                  ],
+            });
+
+            // Apply category filter if category_id is provided
+            if (category_id) {
+                  appliedJobsQuery = appliedJobsQuery
+                        .where("category_id")
+                        .equals(category_id);
+            }
+
+            const appliedJobs = await appliedJobsQuery.exec();
 
             if (!appliedJobs || appliedJobs.length === 0) {
                   return res.json({
@@ -215,7 +234,6 @@ const getAppliedJobs = asyncHandler(async (req, res) => {
                   });
             }
 
-            // Transform the data to include the job description
             const transformedJobs = await Promise.all(
                   appliedJobs.map(
                         async ({ job_id, createdAt, updatedAt, __v }) => {
@@ -327,16 +345,24 @@ const getMyJobs = asyncHandler(async (req, res) => {
       const page = parseInt(req.params.page) || 1;
       const limit = parseInt(req.query.limit) || 5;
       const startIndex = (page - 1) * limit;
+      const { category_id } = req.body;
 
       try {
             // Use Mongoose to fetch paginated Jobs for the authenticated user
-            const paginatedJobs = await PostJob.find({ user_id })
+            let jobQuery = PostJob.find({ user_id })
                   .populate({
                         path: "category_id",
                         select: "category_name",
                   })
                   .skip(startIndex)
                   .limit(limit);
+
+            // Apply category filter if category_id is provided
+            if (category_id) {
+                  jobQuery = jobQuery.where("category_id").equals(category_id);
+            }
+
+            const paginatedJobs = await jobQuery.exec();
 
             const totalJobs = await PostJob.countDocuments({ user_id });
             const hasMore = startIndex + paginatedJobs.length < totalJobs;
