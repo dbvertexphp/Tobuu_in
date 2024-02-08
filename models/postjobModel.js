@@ -18,26 +18,28 @@ const jobSchema = mongoose.Schema(
       }
 );
 
-const AppliedUserSchema = new mongoose.Schema(
-      {
-            user_ids: [
-                  {
-                        type: mongoose.Schema.Types.ObjectId,
-                        ref: "User", // Reference to the User model
-                        required: true,
-                  },
-            ],
-            job_id: {
+const AppliedUserSchema = new mongoose.Schema({
+      user_ids: [
+            {
                   type: mongoose.Schema.Types.ObjectId,
-                  ref: "PostJob", // Reference to the PostJob model
+                  ref: "User", // Reference to the User model
                   required: true,
             },
-            datetime: {
-                  type: String,
-                  default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
-            },
+      ],
+      category_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Category",
       },
-);
+      job_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "PostJob", // Reference to the PostJob model
+            required: true,
+      },
+      datetime: {
+            type: String,
+            default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
+      },
+});
 
 const AppliedUser = mongoose.model("PostJobAppliedUser", AppliedUserSchema);
 const PostJob = mongoose.model("PostJob", jobSchema);

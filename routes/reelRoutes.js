@@ -26,6 +26,7 @@ reelRoutes.route("/deleteReel").delete(protect, deleteReel);
 reelRoutes.route("/updateReelViewCount").post(protect, updateReelViewCount);
 reelRoutes.route("/getReelComments/:reelId").get(commonProtect, getReelComments);
 reelRoutes.route("/getPaginatedReel/:page").get(commonProtect,getPaginatedReel);
+reelRoutes.route("/gestReel_ByCategory").post(commonProtect,getReel_ByCategory);
 reelRoutes.route("/streamReel/:reelId").get(streamReel);
 reelRoutes.route("/getReelThumbnails/:limit").post(getReelThumbnails);
 reelRoutes.route("/getUserReels/:user_id/:page").get(commonProtect,getUserReels);

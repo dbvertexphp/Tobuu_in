@@ -147,6 +147,10 @@ const AcceptFriendRequest = asyncHandler(async (req, res) => {
                   await myFriends.save();
             }
 
+            message = `Accept Club Request`;
+            type = "Request_Accept";
+            createNotification(user_id, friend_id, message, type);
+
             res.status(200).json({
                   status: true,
                   message: "Friend request processed successfully",

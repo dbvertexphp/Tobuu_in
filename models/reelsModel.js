@@ -1,7 +1,10 @@
 const mongoose = require("mongoose");
 const moment = require("moment-timezone");
+const autoIncrement = require('mongoose-auto-increment');
+autoIncrement.initialize(mongoose.connection);
 
 const reelSchema = mongoose.Schema({
+      share_Id: { type: Number, required: true, unique: true },
       reel_name: { type: String, trim: true, required: true },
       title: { type: String },
       thumbnail_name: { type: String, trim: true, required: true },
@@ -18,6 +21,11 @@ const reelSchema = mongoose.Schema({
             type: String,
             default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
       }, // Adjust the maxlength as needed
+});
+reelSchema.plugin(autoIncrement.plugin, {
+      model: "Reel",
+      field: "share_Id",
+      startAt: 1,
 });
 const reelLikeSchema = mongoose.Schema({
       user_ids: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],

@@ -21,7 +21,11 @@ const {
       NotificationList,
       ForgetresendOTP,
       getProfilePicUploadUrlS3,
-      profilePicKey
+      profilePicKey,
+      getReview,
+      getUnreadCount,
+      updateProfileDataByAdmin,
+      getNotificationId,
 } = require("../controllers/userControllers.js");
 const {
       CreateCalendar,
@@ -61,11 +65,18 @@ userRoutes.route("/profilePicUpload").put(protect, profilePicUpload);
 userRoutes.route("/bankdetailsUpload").post(protect, bank_Detail_create);
 userRoutes.route("/getBankDetails").get(protect, getBankDetails);
 userRoutes.route("/addReview").post(protect, addReview);
+userRoutes.route("/getReview/:id/:limit").get(getReview);
 userRoutes.route("/Watch_time_update").post(protect, Watch_time_update);
-userRoutes.route("/websiteNotificationToken").post(protect, websiteNotificationToken);
+userRoutes
+      .route("/websiteNotificationToken")
+      .post(protect, websiteNotificationToken);
 userRoutes.route("/NotificationList/:limit").get(protect, NotificationList);
-userRoutes.route("/getProfilePicUploadUrlS3").get(protect, getProfilePicUploadUrlS3);
-userRoutes.route("/profilePicKey").post(protect, profilePicKey)
+userRoutes.route("/getNotificationId").post(protect, getNotificationId);
+userRoutes.route("/getUnreadCount").get(protect, getUnreadCount);
+userRoutes
+      .route("/getProfilePicUploadUrlS3")
+      .get(protect, getProfilePicUploadUrlS3);
+userRoutes.route("/profilePicKey").post(protect, profilePicKey);
 
 /*------------- Calendar Routes --------------------- */
 userRoutes.route("/Createcalendar").post(protect, CreateCalendar);
@@ -81,6 +92,9 @@ userRoutes.route("/getHireByMe").get(protect, getHireByMe);
 /*------------- Admin Routes --------------------- */
 userRoutes.route("/getAllUsers").post(protect, getAllUsers);
 userRoutes.route("/getAllHireList").post(protect, getAllHireList);
+userRoutes
+      .route("/updateProfileDataByAdmin")
+      .post(protect, updateProfileDataByAdmin);
 userRoutes.route("/getAllDashboardCount").get(protect, getAllDashboardCount);
 
 module.exports = { userRoutes };

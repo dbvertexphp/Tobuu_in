@@ -80,6 +80,7 @@ const NotificationMessage = mongoose.Schema({
             required: true,
       },
       message: { type: String, required: true },
+      readstatus: { type: Boolean, default: false },
       type: { type: String, required: true },
       datetime: {
             type: String,

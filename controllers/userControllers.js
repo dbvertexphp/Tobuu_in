@@ -92,19 +92,28 @@ const getUserView = asyncHandler(async (req, res) => {
             if (token) {
                   // Check karein ki user ne current post ko like kiya hai ya nahi
                   const isFriend = await MyFriends.exists({
-                        my_id: user_id._id,
-                        friends_id: req.user._id,
+                        $or: [
+                              { my_id: req.user._id, friends_id: user_id._id },
+                              { my_id: user_id._id, friends_id: req.user._id },
+                        ],
                   });
 
                   const isRequestPending = await MyFriends.exists({
                         my_id: user_id._id,
                         request_id: req.user._id,
                   });
+                  const isRequestAccept = await MyFriends.exists({
+                        my_id: req.user._id,
+                        request_id: user_id._id,
+                  });
+
                   // User ne post ko like kiya hai ya nahi, is par based Friend_status set karein
                   if (isFriend) {
                         Friend_status = "Yes";
                   } else if (isRequestPending) {
                         Friend_status = "Pending";
+                  } else if (isRequestAccept) {
+                        Friend_status = "Accept";
                   }
             }
 
@@ -367,9 +376,10 @@ const resendOTP = asyncHandler(async (req, res) => {
       }
 
       // Update the user's otp field with the new OTP
-      user.otp = newOTP;
-      //user.otp_verified = 0; // Reset otp_verified status
-      await user.save();
+      const result = await User.updateOne(
+            { _id: user._id },
+            { $set: { otp: newOTP } }
+      );
 
       // Send the new OTP to the user (you can implement this logic)
 
@@ -482,50 +492,45 @@ const updateProfileData = asyncHandler(async (req, res) => {
             req.body;
       const userId = req.user._id; // Assuming you have user authentication middleware
 
-      // Check if the user exists
-      const user = await User.findById(userId);
+      try {
+            // Update the user's profile fields if they are provided in the request
+            const updatedUser = await User.findByIdAndUpdate(
+                  userId,
+                  {
+                        $set: {
+                              interest: interest,
+                              about_me: about_me,
+                              last_name: last_name,
+                              first_name: first_name,
+                              dob: dob ? new Date(dob) : undefined,
+                              address: address,
+                        },
+                  },
+                  { new: true }
+            ); // Option to return the updated document
 
-      if (!user) {
-            return res.status(200).json({ message: "User not found" });
-      }
+            if (!updatedUser) {
+                  return res.status(404).json({ message: "User not found" });
+            }
 
-      // Update the user's profile fields if they are provided in the request
-      if (interest !== undefined) {
-            user.interest = interest;
+            return res.status(200).json({
+                  _id: updatedUser._id,
+                  interest: updatedUser.interest,
+                  about_me: updatedUser.about_me,
+                  address: updatedUser.address,
+                  last_name: updatedUser.last_name,
+                  first_name: updatedUser.first_name,
+                  dob: updatedUser.dob,
+                  pic: updatedUser.pic,
+                  email: updatedUser.email,
+                  mobile: updatedUser.mobile,
+                  username: updatedUser.username,
+                  status: true,
+            });
+      } catch (error) {
+            console.error("Error updating user profile:", error.message);
+            return res.status(500).json({ error: "Internal Server Error" });
       }
-      if (about_me !== undefined) {
-            user.about_me = about_me;
-      }
-      if (last_name !== undefined) {
-            user.last_name = last_name;
-      }
-      if (first_name !== undefined) {
-            user.first_name = first_name;
-      }
-      if (dob !== undefined) {
-            user.dob = new Date(dob);
-      }
-      if (address !== undefined) {
-            user.address = address;
-      }
-
-      // Save the updated user profile
-      const updatedUser = await user.save();
-
-      return res.status(200).json({
-            _id: updatedUser._id,
-            interest: updatedUser.interest,
-            about_me: updatedUser.about_me,
-            address: updatedUser.address,
-            last_name: updatedUser.last_name,
-            first_name: updatedUser.first_name,
-            dob: updatedUser.dob,
-            pic: updatedUser.pic,
-            email: user.email,
-            mobile: user.mobile,
-            username: user.username,
-            status: true,
-      });
 });
 
 const forgetPassword = asyncHandler(async (req, res) => {
@@ -729,6 +734,32 @@ const getAllUsers = asyncHandler(async (req, res) => {
       }
 });
 
+const updateProfileDataByAdmin = asyncHandler(async (req, res) => {
+      const { edit_mobile_name, userId } = req.body;
+
+      try {
+            // Update only the mobile number
+            const updatedUser = await User.findOneAndUpdate(
+                  { _id: userId },
+                  { $set: { mobile: edit_mobile_name } },
+                  { new: true } // Option to return the updated document
+            );
+
+            if (!updatedUser) {
+                  return res.status(404).json({ message: "User not found" });
+            }
+
+            return res.status(200).json({
+                  _id: updatedUser._id,
+                  mobile: updatedUser.mobile,
+                  status: true,
+            });
+      } catch (error) {
+            console.error("Error updating mobile number:", error.message);
+            return res.status(500).json({ error: "Internal Server Error" });
+      }
+});
+
 const getAllDashboardCount = asyncHandler(async (req, res) => {
       try {
             const category = await Category.countDocuments(); // Assuming there is only one document
@@ -838,6 +869,64 @@ const addReview = asyncHandler(async (req, res) => {
       }
 });
 
+const getReview = asyncHandler(async (req, res) => {
+      try {
+            const user_id = req.params.id;
+            const page = req.query.page || 1;
+            const pageSize = 10;
+
+            const notifications = await Review.find({
+                  my_id: user_id,
+            })
+                  .sort({ datetime: -1 })
+                  .skip((page - 1) * pageSize)
+                  .limit(pageSize);
+
+            if (!notifications || notifications.length === 0) {
+                  return res
+                        .status(200)
+                        .json({ status: false, notifications: [] });
+            }
+
+            const notificationList = await Promise.all(
+                  notifications.map(async (notification) => {
+                        const senderDetails = await User.findById(
+                              notification.review_id
+                        );
+
+                        const sender = {
+                              _id: senderDetails._id,
+                              first_name: senderDetails.first_name,
+                              last_name: senderDetails.last_name,
+                              pic: `${senderDetails.pic}`,
+                        };
+
+                        const notificationWithSender = {
+                              _id: notification._id,
+                              sender,
+                              message: notification.message,
+                              description: notification.description,
+                              type: notification.type,
+                              time: calculateTimeDifference(
+                                    notification.datetime
+                              ),
+                              date: notification.datetime.split(" ")[0],
+                        };
+
+                        return notificationWithSender;
+                  })
+            );
+
+            res.status(200).json({
+                  status: true,
+                  reviews: notificationList,
+            });
+      } catch (error) {
+            console.error("Error getting notification list:", error.message);
+            res.status(500).json({ error: "Internal Server Error" });
+      }
+});
+
 const Watch_time_update = asyncHandler(async (req, res) => {
       try {
             const { time } = req.body;
@@ -925,7 +1014,7 @@ const NotificationList = asyncHandler(async (req, res) => {
             const notifications = await NotificationMessages.find({
                   receiver_id: user_id,
             })
-                  .sort({ createdAt: -1 })
+                  .sort({ datetime: -1 })
                   .skip((page - 1) * pageSize)
                   .limit(pageSize);
 
@@ -934,6 +1023,16 @@ const NotificationList = asyncHandler(async (req, res) => {
                         .status(200)
                         .json({ status: false, notifications: [] });
             }
+
+            await Promise.all(
+                  notifications.map(async (notification) => {
+                        // Update readstatus to true for the current notification
+                        await NotificationMessages.findByIdAndUpdate(
+                              notification._id,
+                              { readstatus: true }
+                        );
+                  })
+            );
 
             const notificationList = await Promise.all(
                   notifications.map(async (notification) => {
@@ -972,6 +1071,53 @@ const NotificationList = asyncHandler(async (req, res) => {
             res.status(500).json({ error: "Internal Server Error" });
       }
 });
+
+const getNotificationId = asyncHandler(async (req, res) => {
+      try {
+            const sender_id = req.body.sender_id;
+            const type = req.body.type; // Assuming user_id is provided as a query parameter
+            const receiver_id = req.user._id;
+
+            const notifications = await NotificationMessages.findOne(
+                  {
+                        sender_id: sender_id,
+                        receiver_id: receiver_id,
+                        type: type, // Filtering by type 'Friend_Request'
+                  },
+                  "_id"
+            ); // Only selecting the _id field
+
+            res.status(200).json({
+                  status: true,
+                  notificetion_id: notifications,
+            });
+      } catch (error) {
+            console.error("Error getting notifications:", error.message);
+            res.status(500).json({ error: "Internal Server Error" });
+      }
+});
+
+const getUnreadCount = async (req, res) => {
+      try {
+            const user_id = req.user._id;
+            const unreadNotifications = await NotificationMessages.find({
+                  receiver_id: user_id,
+                  readstatus: false,
+            });
+
+            let unreadCount = unreadNotifications.length;
+            if (unreadCount > 10) {
+                  unreadCount = 10;
+            } else if (unreadCount == 0) {
+                  unreadCount = "";
+            }
+
+            return res.status(200).json({ status: true, Count: unreadCount });
+      } catch (error) {
+            console.error("Error getting unread count:", error.message);
+            throw new Error("Error getting unread count");
+      }
+};
 
 const calculateTimeDifference = (datetime) => {
       try {
@@ -1059,9 +1205,9 @@ function TextLocalApi(type, name, mobile, otp) {
       const sendSms = async () => {
             try {
                   const response = await axios.post(url);
-                  // console.log("response", response.data);
+                  console.log("response", response.data);
             } catch (error) {
-                  //console.error("error", error.message);
+                  console.error("error", error.message);
             }
       };
 
@@ -1102,4 +1248,8 @@ module.exports = {
       ForgetresendOTP,
       getProfilePicUploadUrlS3,
       profilePicKey,
+      getReview,
+      getUnreadCount,
+      updateProfileDataByAdmin,
+      getNotificationId,
 };

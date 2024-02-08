@@ -17,11 +17,10 @@ const createSocketIO = (server) => {
       const connectedUsers = {};
 
       io.on("connection", (socket) => {
-            // console.log("Connected to socket.io");
+            console.log("Connected to socket.io");
 
             socket.on("setup", (userData) => {
                   socket.join(userData._id);
-                  console.log("connected user", userData._id);
                   socket.emit("connected");
 
                   // Emit online status for the connected user
@@ -32,24 +31,23 @@ const createSocketIO = (server) => {
             });
 
             socket.on("join chat", (room) => {
+                  console.log("join chat room");
                   socket.join(room);
-                  console.log("User Joined Room: " + room);
             });
 
             socket.on("typing", (data) => {
+                  console.log("typing");
                   socket.in(data.chatData.room).emit("typing");
-                  console.log("room", data.chatData.room);
             });
 
             socket.on("stop typing", (room) => {
-                  socket.in(room).emit("stop typing");
                   console.log("stop typing");
+                  socket.in(room).emit("stop typing");
             });
 
             socket.on("block Status", (data) => {
                   const { chatId, status, userId } = data;
                   socket.in(chatId).emit("block Status", { status, userId });
-                  console.log("block Status");
             });
 
             socket.on("new message", (newMessageRecieved) => {
@@ -82,8 +80,6 @@ const createSocketIO = (server) => {
             });
 
             socket.on("disconnect", () => {
-                  console.log("User disconnected");
-
                   // Get the user ID of the disconnected user
                   const userId = Object.keys(socket.rooms).find(
                         (room) => room !== socket.id

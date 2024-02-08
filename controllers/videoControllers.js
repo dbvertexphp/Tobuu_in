@@ -498,16 +498,25 @@ const getVideoComments = asyncHandler(async (req, res) => {
             let like_status = "No";
             let subscribe_status = "No";
 
+            const pic_name_url = await getSignedUrlS3(videoDetails.user_id.pic);
+
             // Add the base URL to the pic field in video details
+
+            const thumbnail_name_url = await getSignedUrlS3(
+                  videoDetails.thumbnail_name
+            );
+            const video_name_url = await getSignedUrlS3(
+                  videoDetails.video_name
+            );
             const updatedVideoDetails = {
                   ...videoDetails._doc,
                   user_id: {
                         ...videoDetails.user_id._doc,
-                        pic: `${videoDetails.user_id.pic}`,
+                        pic: pic_name_url,
                   },
                   like_count: likeCount,
-                  thumbnail_name: `${videoDetails.thumbnail_name}`,
-                  video_url: `api/video/streamVideo/${videoDetails._id}`,
+                  thumbnail_name: thumbnail_name_url,
+                  video_url: video_name_url,
                   like_status, // Include like_status
                   subscribe_status, // Include subscribe_status
             };
@@ -534,13 +543,20 @@ const getVideoComments = asyncHandler(async (req, res) => {
             }
 
             // Add the base URL to the pic field in comments
-            const updatedVideoComments = videoComments.map((comment) => ({
-                  ...comment._doc,
-                  user_id: {
-                        ...comment.user_id._doc,
-                        pic: `${comment.user_id.pic}`,
-                  },
-            }));
+            const updatedVideoComments = await Promise.all(
+                  videoComments.map(async (comment) => {
+                        const pic_name_url = await getSignedUrlS3(
+                              comment.user_id.pic
+                        );
+                        return {
+                              ...comment._doc,
+                              user_id: {
+                                    ...comment.user_id._doc,
+                                    pic: pic_name_url,
+                              },
+                        };
+                  })
+            );
 
             if (!videoComments || videoComments.length === 0) {
                   return res.json({

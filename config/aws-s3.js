@@ -16,9 +16,11 @@ const client = new S3Client({
 });
 
 async function getSignedUrlS3(key) {
+      const expireTime = 30 * 24 * 60 * 60; // 30 days in seconds
       const command = new GetObjectCommand({
             Bucket: process.env.S3_BUCKET,
             Key: key,
+            Expires: expireTime, // Set expiration time
       });
       return getSignedUrl(client, command);
 }

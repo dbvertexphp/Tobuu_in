@@ -17,7 +17,7 @@ const jobRoutes = express.Router();
 jobRoutes.route("/uploadPostJob").post(protect, uploadPostJob);
 jobRoutes.route("/appliedPostJob").post(protect, appliedPostJob);
 jobRoutes.route("/updateJobStatus").post(protect, updateJobStatus);
-jobRoutes.route("/getAppliedJobs").get(protect, getAppliedJobs);
+jobRoutes.route("/getAppliedJobs").post(protect, getAppliedJobs);
 jobRoutes.route("/getAppliedUsers/:job_id").get(protect, getAppliedUsers);
 jobRoutes.route("/getMyJobs/:page").get(protect, getMyJobs);
 jobRoutes.route("/getPaginatedJob/:page").get(commonProtect, getPaginatedJob);

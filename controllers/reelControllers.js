@@ -88,7 +88,7 @@ const getReelLikeCount = async (reel_id) => {
 
 const getPaginatedReel = asyncHandler(async (req, res) => {
       const page = parseInt(req.params.page) || 1;
-      const limit = parseInt(req.query.limit) || 10;
+      const limit = parseInt(req.query.limit) || 1;
       const startIndex = (page - 1) * limit;
 
       try {
@@ -112,10 +112,118 @@ const getPaginatedReel = asyncHandler(async (req, res) => {
                   return res.json({
                         message: "Reels Not Found",
                         status: true,
+                        data: [],
                   });
             }
 
             // Transform and exclude specific fields in the response
+            const transformedReels = [];
+
+            const token = req.header("Authorization");
+
+            for (const reel of paginatedReels) {
+                  const { reel_name, updatedAt, __v, ...response } = reel._doc;
+
+                  let like_status = "No";
+                  let subscribe_status = "No";
+                  let like_count = 0;
+
+                  // Get the like count for each reel
+                  const reelLikeCount = await ReelLike.find({
+                        reel_id: reel._id,
+                  });
+
+                  for (const reelLikeCountUpdate of reelLikeCount) {
+                        like_count = reelLikeCountUpdate.count; // Fix the assignment here, use '=' instead of ':'
+                  }
+                  const pic_name_url = await getSignedUrlS3(reel.user_id.pic);
+                  // Add the base URL to the user's profile picture
+                  const updatedUser = {
+                        ...reel.user_id._doc,
+                        pic: pic_name_url,
+                  };
+
+                  if (token) {
+                        // Check if the user has liked the current reel
+                        const isLiked = await ReelLike.exists({
+                              reel_id: reel._id,
+                              user_ids: req.user._id,
+                        });
+
+                        // Set like_status based on whether the user has liked the reel
+                        like_status = isLiked ? "Yes" : "No";
+
+                        // Check if the user has subscribed to the author
+                        const isSubscribed = await Subscribes.exists({
+                              my_id: reel.user_id._id,
+                              subscriber_id: req.user._id,
+                        });
+
+                        // Set subscribe_status based on whether the user has subscribed to the author
+                        subscribe_status = isSubscribed ? "Yes" : "No";
+                  }
+                  const thumbnail_name_url = await getSignedUrlS3(
+                        reel.thumbnail_name
+                  );
+                  const video_name_url = await getSignedUrlS3(reel.reel_name);
+
+                  transformedReels.push({
+                        ...response,
+                        reel_url: video_name_url,
+                        thumbnail_name: thumbnail_name_url,
+                        user_id: updatedUser,
+                        like_count,
+                        like_status,
+                        subscribe_status,
+                  });
+            }
+
+            res.json({
+                  page,
+                  limit,
+                  data: transformedReels,
+                  hasMore,
+                  status: true,
+            });
+      } catch (error) {
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  error: error.message,
+                  status: false,
+            });
+      }
+});
+
+const getReel_ByCategory = asyncHandler(async (req, res) => {
+      const { category_id, page_number } = req.body;
+      const limit = parseInt(req.query.limit) || 1; // Default limit set to 10
+      const page = parseInt(page_number) || 1;
+      const startIndex = (page - 1) * limit;
+
+      try {
+            const paginatedReels = await Reel.find({ category_id }) // Query by category_id
+                  .skip(startIndex)
+                  .limit(limit)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic",
+                  })
+                  .populate({
+                        path: "category_id",
+                        select: "category_name",
+                  });
+
+            const totalReels = await Reel.countDocuments({ category_id }); // Count documents based on category_id
+            const hasMore = startIndex + paginatedReels.length < totalReels;
+
+            if (paginatedReels.length === 0) {
+                  return res.json({
+                        message: "Reels Not Found",
+                        status: true,
+                        data: [],
+                  });
+            }
+
             const transformedReels = [];
 
             const token = req.header("Authorization");
@@ -391,22 +499,30 @@ const getReelComments = asyncHandler(async (req, res) => {
             const likeCount = await getReelLikeCount(reelId);
 
             // Add the base URL to the pic field in reel details
+            const pic_name_url = await getSignedUrlS3(reelDetails.user_id.pic);
             const updatedReelDetails = {
                   ...reelDetails._doc,
                   user_id: {
                         ...reelDetails.user_id._doc,
-                        pic: `${reelDetails.user_id.pic}`,
+                        pic: pic_name_url,
                   },
             };
 
             // Add the base URL to the pic field in comments
-            const updatedReelComments = reelComments.map((comment) => ({
-                  ...comment._doc,
-                  user_id: {
-                        ...comment.user_id._doc,
-                        pic: `${comment.user_id.pic}`,
-                  },
-            }));
+            const updatedReelComments = await Promise.all(
+                  reelComments.map(async (comment) => {
+                        const pic_name_url = await getSignedUrlS3(
+                              comment.user_id.pic
+                        );
+                        return {
+                              ...comment._doc,
+                              user_id: {
+                                    ...comment.user_id._doc,
+                                    pic: pic_name_url,
+                              },
+                        };
+                  })
+            );
 
             res.json({
                   message: "Reel comments fetched successfully.",

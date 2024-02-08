@@ -2,7 +2,11 @@ const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const asyncHandler = require("express-async-handler");
 const { Video, VideoLike, VideoComment } = require("../models/videoModel.js");
-const companyDetailsModel = require("../models/companyDetailsModel.js");
+const {
+      companyDetailsModel,
+      Report,
+      ContactUs,
+} = require("../models/companyDetailsModel.js");
 const { Reel, ReelLike, ReelComment } = require("../models/reelsModel.js");
 const {
       PostTimeline,
@@ -73,7 +77,7 @@ const contactUs = asyncHandler(async (req, res) => {
             }
 
             // Create a new ContactUs document
-            contactUsEntry = await companyDetailsModel.ContactUs.create({
+            contactUsEntry = await ContactUs.create({
                   name,
                   email_id,
                   mobile_number,
