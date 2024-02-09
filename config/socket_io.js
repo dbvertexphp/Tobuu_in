@@ -17,7 +17,7 @@ const createSocketIO = (server) => {
       const connectedUsers = {};
 
       io.on("connection", (socket) => {
-            console.log("Connected to socket.io");
+            //console.log("Connected to socket.io");
 
             socket.on("setup", (userData) => {
                   socket.join(userData._id);

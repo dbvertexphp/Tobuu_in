@@ -32,7 +32,7 @@ reelRoutes
       .route("/getPaginatedReel/:page")
       .get(commonProtect, getPaginatedReel);
 reelRoutes
-      .route("/gestReel_ByCategory")
+      .route("/getReel_ByCategory")
       .post(commonProtect, getReel_ByCategory);
 reelRoutes.route("/streamReel/:reelId").get(streamReel);
 reelRoutes.route("/getReelThumbnails/:limit").post(getReelThumbnails);

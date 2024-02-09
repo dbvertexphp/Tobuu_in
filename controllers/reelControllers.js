@@ -93,7 +93,7 @@ const getPaginatedReel = asyncHandler(async (req, res) => {
 
       try {
             // Use Mongoose to fetch paginated Reels from the database
-            const paginatedReels = await Reel.find({ status: 0 })
+            const paginatedReels = await Reel.find({})
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -927,7 +927,7 @@ const getReelsUploadUrlS3 = asyncHandler(async (req, res) => {
 
 const getAllReels = asyncHandler(async (req, res) => {
       const { page = 1, search = "" } = req.query; // Using req.query for query parameters
-      const perPage = 2;
+      const perPage = 10;
 
       const query = search
             ? {
@@ -1024,12 +1024,10 @@ const statusUpdate = async (req, res) => {
             reel.status = status;
             await reel.save();
 
-            return res
-                  .status(200)
-                  .json({
-                        message: "Status updated successfully",
-                        status: true,
-                  });
+            return res.status(200).json({
+                  message: "Status updated successfully",
+                  status: true,
+            });
       } catch (error) {
             console.error(error);
             return res
