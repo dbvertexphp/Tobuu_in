@@ -21,6 +21,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.495.0",
     "@aws-sdk/s3-request-presigner": "^3.495.0",
+    "@ngrok/ngrok": "^1.0.0",
     "axios": "^1.6.5",
     "bcryptjs": "^2.4.3",
     "colors": "^1.4.0",
@@ -41,6 +42,7 @@
     "mongoose-auto-increment": "^5.0.1",
     "multer": "^1.4.5-lts.1",
     "nodemon": "^2.0.7",
+    "razorpay": "^2.9.2",
     "socket.io": "^4.7.2"
   }
 }

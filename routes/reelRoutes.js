@@ -15,6 +15,9 @@ const {
       statusUpdate,
       getReelsUploadUrlS3,
       getReel_ByCategory,
+      getMyReelsWebsite,
+      getMyReel_ByCategory,
+      getUserReelsWebsite,
 } = require("../controllers/reelControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
@@ -31,15 +34,18 @@ reelRoutes
 reelRoutes
       .route("/getPaginatedReel/:page")
       .get(commonProtect, getPaginatedReel);
-reelRoutes
-      .route("/getReel_ByCategory")
-      .post(commonProtect, getReel_ByCategory);
+reelRoutes.route("/getReel_ByCategory").post(commonProtect, getReel_ByCategory);
 reelRoutes.route("/streamReel/:reelId").get(streamReel);
 reelRoutes.route("/getReelThumbnails/:limit").post(getReelThumbnails);
 reelRoutes
       .route("/getUserReels/:user_id/:page")
       .get(commonProtect, getUserReels);
+reelRoutes
+      .route("/getUserReelsWebsite/")
+      .post(commonProtect, getUserReelsWebsite);
 reelRoutes.route("/getMyReels").get(protect, getMyReels);
+reelRoutes.route("/getMyReel_ByCategory").post(protect, getMyReel_ByCategory);
+reelRoutes.route("/getMyReelsWebsite/:page").post(protect, getMyReelsWebsite);
 reelRoutes.route("/getReelsUploadUrlS3").get(protect, getReelsUploadUrlS3);
 reelRoutes.route("/getAllReels").post(protect, getAllReels);
 reelRoutes.route("/statusUpdate").post(protect, statusUpdate);

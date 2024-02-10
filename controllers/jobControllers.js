@@ -79,11 +79,6 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
                   paginatedJobs.length === limit &&
                   startIndex + paginatedJobs.length < totalJobs;
 
-            console.log(paginatedJobs.length);
-            console.log(startIndex);
-            console.log(totalJobs);
-            console.log(hasMore);
-
             if (paginatedJobs.length === 0) {
                   return res.json({
                         message: "Job Not Found",
