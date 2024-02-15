@@ -89,7 +89,9 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
                         select: "category_name",
                   });
 
-            const totalTimelines = await PostTimeline.countDocuments();
+            // Calculate totalTimelines with category filter applied
+            const totalTimelines = await PostTimeline.countDocuments(query);
+
             const hasMore =
                   startIndex + paginatedTimelines.length < totalTimelines;
 
@@ -678,10 +680,7 @@ const getAllTimeline = asyncHandler(async (req, res) => {
       // Build the query based on search
       const query = search
             ? {
-                    $or: [
-                          { description: { $regex: search, $options: "i" } },
-                        
-                    ],
+                    $or: [{ description: { $regex: search, $options: "i" } }],
               }
             : {};
 
@@ -692,18 +691,18 @@ const getAllTimeline = asyncHandler(async (req, res) => {
                   .populate({
                         path: "user_id",
                         select: "first_name last_name pic",
-                    })
-                    .populate({
+                  })
+                  .populate({
                         path: "category_id",
                         select: "category_name",
-                    });
+                  });
 
             const totalCount = await PostTimeline.countDocuments(query);
             const totalPages = Math.ceil(totalCount / perPage);
 
             const transformedUsers = users.map((user) => {
                   let transformedUser = { ...user.toObject() }; // Convert Mongoose document to plain JavaScript object
-                 
+
                   return { user: transformedUser };
             });
 
@@ -753,26 +752,34 @@ const getAllTimeline = asyncHandler(async (req, res) => {
       }
 });
 const statusUpdate = async (req, res) => {
-    
       const { status } = req.body;
       const { id } = req.body;
-    
+
       try {
-        const reel = await PostTimeline.findById(id);
-    
-        if (!reel) {
-          return res.status(200).json({ message: 'Project not found', status: false });
-        }
-    
-        reel.status = status;
-        await reel.save();
-    
-        return res.status(200).json({ message: 'Status updated successfully', status: true });
+            const reel = await PostTimeline.findById(id);
+
+            if (!reel) {
+                  return res
+                        .status(200)
+                        .json({ message: "Project not found", status: false });
+            }
+
+            reel.status = status;
+            await reel.save();
+
+            return res
+                  .status(200)
+                  .json({
+                        message: "Status updated successfully",
+                        status: true,
+                  });
       } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'Internal Server Error', status: false });
+            console.error(error);
+            return res
+                  .status(500)
+                  .json({ message: "Internal Server Error", status: false });
       }
-    };
+};
 module.exports = {
       uploadPostTimeline,
       getPaginatedTimeline,
