@@ -767,12 +767,10 @@ const statusUpdate = async (req, res) => {
             reel.status = status;
             await reel.save();
 
-            return res
-                  .status(200)
-                  .json({
-                        message: "Status updated successfully",
-                        status: true,
-                  });
+            return res.status(200).json({
+                  message: "Status updated successfully",
+                  status: true,
+            });
       } catch (error) {
             console.error(error);
             return res
@@ -780,6 +778,53 @@ const statusUpdate = async (req, res) => {
                   .json({ message: "Internal Server Error", status: false });
       }
 };
+
+const searchPostsOnTimeline = asyncHandler(async (req, res) => {
+      const { page = 1, title = "" } = req.body;
+      const perPage = 4; // You can adjust this according to your requirements
+
+      // Build the query based on title with case-insensitive search
+      const query = {
+            title: { $regex: title, $options: "i" },
+      };
+
+      try {
+            const posts = await PostTimeline.find(query)
+                  .select("_id title")
+                  .skip((page - 1) * perPage)
+                  .limit(perPage);
+
+            const totalCount = await PostTimeline.countDocuments(query);
+            const totalPages = Math.ceil(totalCount / perPage);
+
+            // Add the label "Timeline List" to each post item
+            let postsWithLabel = posts.map((post) => ({
+                  ...post.toObject(),
+                  label: "Timeline List",
+            }));
+
+            if (postsWithLabel.length === 4) {
+                  postsWithLabel.push({
+                        _id: "See_All",
+                        title: "See All",
+                        label: "Timeline List",
+                  });
+            }
+
+            res.json({
+                  data: postsWithLabel,
+                  page: page.toString(),
+                  total_rows: totalCount,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
 module.exports = {
       uploadPostTimeline,
       getPaginatedTimeline,
@@ -792,4 +837,5 @@ module.exports = {
       getUserTimeline,
       getAllTimeline,
       statusUpdate,
+      searchPostsOnTimeline,
 };

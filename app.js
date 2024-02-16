@@ -52,7 +52,7 @@ app.use("/api/timeline", timelineRoutes);
 app.use("/api/myfriend", myfriendRoutes);
 app.use("/api/subscribe", subscribeRoutes);
 app.use("/api/comman", commanRoutes);
-//app.use("/api/comman", transactionRoutes);
+app.use("/api/transaction", transactionRoutes);
 // --------------------------Routes------------------------------
 
 // --------------------------deploymentssssss------------------------------

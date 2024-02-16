@@ -12,7 +12,8 @@ const {
       deleteVideo,
       getVideosThumbnails,
       getUserVideos,
-      getVideoUploadUrlS3
+      getVideoUploadUrlS3,
+      searchVideos
 } = require("../controllers/videoControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
@@ -20,6 +21,7 @@ const commonProtect = require("../middleware/comman_authMiddleware.js");
 const videoRoutes = express.Router();
 
 videoRoutes.route("/uploadVideos").post(protect, uploadVideo);
+videoRoutes.route("/searchVideos").post(searchVideos);
 videoRoutes.route("/updateVideoLike").post(protect, updateVideoLike);
 videoRoutes.route("/addVideoComment").post(protect, addVideoComment);
 videoRoutes.route("/deleteVideo").delete(protect, deleteVideo);

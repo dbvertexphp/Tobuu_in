@@ -3,6 +3,7 @@ const moment = require("moment-timezone");
 
 const timelineSchema = mongoose.Schema({
       user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      title: { type: String },
       category_id: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Category",

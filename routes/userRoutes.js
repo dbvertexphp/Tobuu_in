@@ -26,6 +26,7 @@ const {
       getUnreadCount,
       updateProfileDataByAdmin,
       getNotificationId,
+      searchUsers,
 } = require("../controllers/userControllers.js");
 const {
       CreateCalendar,
@@ -51,6 +52,7 @@ userRoutes.route("/verifyOtp").post(verifyOtp);
 userRoutes.route("/resendOTP").post(resendOTP);
 userRoutes.route("/ForgetresendOTP").post(ForgetresendOTP);
 userRoutes.route("/forgetPassword").put(forgetPassword);
+userRoutes.route("/searchUsers").post(searchUsers);
 
 /*------------- Comman Auth Routes --------------------- */
 userRoutes.route("/getUserView/:_id/").get(commonProtect, getUserView);

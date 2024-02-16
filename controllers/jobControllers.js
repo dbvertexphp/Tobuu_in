@@ -581,6 +581,54 @@ const statusUpdate = async (req, res) => {
                   .json({ message: "Internal Server Error", status: false });
       }
 };
+
+const searchJobPosts = asyncHandler(async (req, res) => {
+      const { page = 1, title = "" } = req.body;
+      const perPage = 4; // You can adjust this according to your requirements
+
+      // Build the query based on title with case-insensitive search
+      const query = {
+            title: { $regex: title, $options: "i" },
+      };
+
+      try {
+            const jobPosts = await PostJob.find(query)
+                  .select("_id title")
+                  .skip((page - 1) * perPage)
+                  .limit(perPage);
+
+            const totalCount = await PostJob.countDocuments(query);
+            const totalPages = Math.ceil(totalCount / perPage);
+
+            // Add the label "Job List" to each job post item
+            let jobPostsWithLabel = jobPosts.map((jobPost) => ({
+                  ...jobPost.toObject(),
+                  label: "Job List",
+            }));
+
+            if (jobPostsWithLabel.length === 4) {
+                  jobPostsWithLabel.push({
+                        _id: "See_All",
+                        title: "See All",
+                        label: "Job List",
+                  });
+            }
+
+
+            res.json({
+                  data: jobPostsWithLabel,
+                  page: page.toString(),
+                  total_rows: totalCount,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
 module.exports = {
       uploadPostJob,
       getPaginatedJob,
@@ -591,4 +639,5 @@ module.exports = {
       updateJobStatus,
       getAllJob,
       statusUpdate,
+      searchJobPosts,
 };

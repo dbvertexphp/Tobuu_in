@@ -18,12 +18,14 @@ const {
       getMyReelsWebsite,
       getMyReel_ByCategory,
       getUserReelsWebsite,
+      searchReels,
 } = require("../controllers/reelControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
 
 const reelRoutes = express.Router();
 reelRoutes.route("/uploadReel").post(protect, uploadReel);
+reelRoutes.route("/searchReels").post(searchReels);
 reelRoutes.route("/updateReelLike").post(protect, updateReelLike);
 reelRoutes.route("/addReelComment").post(protect, addReelComment);
 reelRoutes.route("/deleteReel").delete(protect, deleteReel);

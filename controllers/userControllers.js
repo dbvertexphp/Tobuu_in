@@ -734,6 +734,55 @@ const getAllUsers = asyncHandler(async (req, res) => {
       }
 });
 
+const searchUsers = asyncHandler(async (req, res) => {
+      const { page = 1, name = "" } = req.body;
+      const perPage = 4; // You can adjust this according to your requirements
+
+      // Build the query based on name and username with case-insensitive search
+      const query = {
+            $or: [
+                  { first_name: { $regex: name, $options: "i" } },
+                  { username: { $regex: name, $options: "i" } },
+            ],
+      };
+
+      try {
+            const users = await User.find(query)
+                  .select("_id first_name last_name username")
+                  .skip((page - 1) * perPage)
+                  .limit(perPage);
+
+            let transformedUsers = users.map((user) => ({
+                  _id: user._id,
+                  title: `${user.first_name} ${user.last_name}`,
+                  label: "User List",
+            }));
+
+            // if (transformedUsers.length === 4) {
+            //       transformedUsers.push({
+            //             _id: "See_All",
+            //             title: "See All",
+            //             label: "User List",
+            //       });
+            // }
+
+            const totalCount = await User.countDocuments(query);
+            const totalPages = Math.ceil(totalCount / perPage);
+
+            res.json({
+                  data: transformedUsers,
+                  page: page.toString(),
+                  total_rows: totalCount,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
 const updateProfileDataByAdmin = asyncHandler(async (req, res) => {
       const { edit_mobile_name, userId } = req.body;
 
@@ -766,7 +815,12 @@ const getAllDashboardCount = asyncHandler(async (req, res) => {
             const user = await User.countDocuments();
             const video = await Video.countDocuments();
             const reels = await Reel.countDocuments();
-            res.status(200).json({ category: category ,user:user,video:video,reels:reels});
+            res.status(200).json({
+                  category: category,
+                  user: user,
+                  video: video,
+                  reels: reels,
+            });
       } catch (error) {
             console.error("Error getting dashboard counts:", error);
             res.status(500).json({
@@ -1252,4 +1306,5 @@ module.exports = {
       getUnreadCount,
       updateProfileDataByAdmin,
       getNotificationId,
+      searchUsers,
 };

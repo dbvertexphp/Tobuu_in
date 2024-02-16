@@ -202,6 +202,12 @@ const getPaginatedVideos = asyncHandler(async (req, res) => {
                   });
             }
 
+            if (req.body.search) {
+                  videoQuery = videoQuery.where({
+                        title: { $regex: req.body.search, $options: "i" },
+                  });
+            }
+
             // Use Mongoose to fetch paginated videos from the database
             const paginatedVideos = await videoQuery
                   .skip(startIndex)
@@ -967,6 +973,52 @@ const getVideoUploadUrlS3 = asyncHandler(async (req, res) => {
             status: false,
       });
 });
+
+const searchVideos = asyncHandler(async (req, res) => {
+      const { page = 1, title = "" } = req.body;
+      const perPage = 4; // You can adjust this according to your requirements
+
+      // Build the query based on title with case-insensitive search
+      const query = {
+            title: { $regex: title, $options: "i" },
+      };
+
+      try {
+            const videos = await Video.find(query)
+                  .select("_id title")
+                  .skip((page - 1) * perPage)
+                  .limit(perPage);
+
+            const totalCount = await Video.countDocuments(query);
+            const totalPages = Math.ceil(totalCount / perPage);
+
+            let transformedVideos = videos.map((video) => ({
+                  ...video.toObject(),
+                  label: "Video List", // Add the label field
+            }));
+
+            if (transformedVideos.length === 4) {
+                  transformedVideos.push({
+                        _id: "See_All",
+                        title: "See All",
+                        label: "Video List",
+                  });
+            }
+
+            res.json({
+                  data: transformedVideos,
+                  page: page.toString(),
+                  total_rows: totalCount,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
 module.exports = {
       uploadVideo,
       getPaginatedVideos,
@@ -981,4 +1033,5 @@ module.exports = {
       getUserVideos,
       getVideoUploadUrlS3,
       getAllVideo,
+      searchVideos,
 };

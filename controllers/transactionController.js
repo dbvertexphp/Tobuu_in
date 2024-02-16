@@ -22,7 +22,7 @@ const CreatePaymentUrl = asyncHandler(async (req, res) => {
       const options = {
             amount: 10000,
             currency: "INR",
-            accept_partial: true,
+            accept_partial: false,
             first_min_partial_amount: 0,
             expire_by: expireBy,
             reference_id: referenceId,
@@ -46,7 +46,6 @@ const CreatePaymentUrl = asyncHandler(async (req, res) => {
 
       try {
             const response = await instance.paymentLink.create(options);
-            console.log(response);
 
             res.status(201).json({
                   Payment_link: response,
@@ -86,5 +85,5 @@ const WebhookGet = asyncHandler(async (req, res) => {
 });
 module.exports = {
       CreatePaymentUrl,
-      WebhookGet
+      WebhookGet,
 };

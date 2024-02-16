@@ -1,22 +1,21 @@
 const mongoose = require("mongoose");
 const moment = require("moment-timezone");
 
-const jobSchema = mongoose.Schema(
-      {
-            user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-            category_id: {
-                  type: mongoose.Schema.Types.ObjectId,
-                  ref: "Category",
-            },
-            description: { type: String, maxlength: 2000 }, // Adjust the maxlength as needed
-            job_status: { type: String, default: "Open" },
-            status: { type: Number, default: 0 },
-            datetime: {
-                  type: String,
-                  default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
-            },
-      }
-);
+const jobSchema = mongoose.Schema({
+      user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      title: { type: String },
+      category_id: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Category",
+      },
+      description: { type: String, maxlength: 2000 }, // Adjust the maxlength as needed
+      job_status: { type: String, default: "Open" },
+      status: { type: Number, default: 0 },
+      datetime: {
+            type: String,
+            default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
+      },
+});
 
 const AppliedUserSchema = new mongoose.Schema({
       user_ids: [

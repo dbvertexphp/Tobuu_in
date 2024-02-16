@@ -1341,6 +1341,52 @@ const statusUpdate = async (req, res) => {
       }
 };
 
+const searchReels = asyncHandler(async (req, res) => {
+      const { page = 1, title = "" } = req.body;
+      const perPage = 4; // You can adjust this according to your requirements
+
+      // Build the query based on title with case-insensitive search
+      const query = {
+            title: { $regex: title, $options: "i" },
+      };
+
+      try {
+            const reels = await Reel.find(query)
+                  .select("_id title share_Id")
+                  .skip((page - 1) * perPage)
+                  .limit(perPage);
+
+            const totalCount = await Reel.countDocuments(query);
+            const totalPages = Math.ceil(totalCount / perPage);
+
+            // Add the label "Reels List" to each item in the reels array
+            let transformedReels = reels.map((reel) => ({
+                  ...reel.toObject(),
+                  label: "Reels List",
+            }));
+
+            if (transformedReels.length === 4) {
+                  transformedReels.push({
+                        _id: "See_All",
+                        title: "See All",
+                        label: "Reels List",
+                  });
+            }
+
+            res.json({
+                  data: transformedReels,
+                  page: page.toString(),
+                  total_rows: totalCount,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
 module.exports = {
       uploadReel,
       getPaginatedReel,
@@ -1360,4 +1406,5 @@ module.exports = {
       getMyReelsWebsite,
       getMyReel_ByCategory,
       getUserReelsWebsite,
+      searchReels,
 };
