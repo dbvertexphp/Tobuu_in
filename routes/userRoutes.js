@@ -27,6 +27,7 @@ const {
       updateProfileDataByAdmin,
       getNotificationId,
       searchUsers,
+      getAllUsersWebsite,
 } = require("../controllers/userControllers.js");
 const {
       CreateCalendar,
@@ -53,7 +54,7 @@ userRoutes.route("/resendOTP").post(resendOTP);
 userRoutes.route("/ForgetresendOTP").post(ForgetresendOTP);
 userRoutes.route("/forgetPassword").put(forgetPassword);
 userRoutes.route("/searchUsers").post(searchUsers);
-
+userRoutes.route("/getAllUsersWebsite").post(commonProtect, getAllUsersWebsite);
 /*------------- Comman Auth Routes --------------------- */
 userRoutes.route("/getUserView/:_id/").get(commonProtect, getUserView);
 

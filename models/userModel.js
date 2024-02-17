@@ -53,8 +53,6 @@ const adminDashboardSchema = new mongoose.Schema({
       job_count: { type: Number, default: 0 },
 });
 
-
-
 const websiteNotificationToken = mongoose.Schema({
       user_id: {
             type: mongoose.Schema.Types.ObjectId,
@@ -109,6 +107,34 @@ userSchema.set("toJSON", {
 userSchema.statics.findById = function (userId) {
       return this.findOne({ _id: userId });
 };
+
+userSchema.pre("save", function (next) {
+      // Capitalize the first letter of first_name
+      if (this.isModified("first_name")) {
+            this.first_name =
+                  this.first_name.charAt(0).toUpperCase() +
+                  this.first_name.slice(1);
+      }
+      // Capitalize the first letter of each interest
+      if (this.isModified("interest")) {
+            this.interest = this.interest.map(
+                  (interest) =>
+                        interest.charAt(0).toUpperCase() + interest.slice(1)
+            );
+      }
+      // Capitalize the first letter of about_me
+      if (this.isModified("about_me")) {
+            this.about_me =
+                  this.about_me.charAt(0).toUpperCase() +
+                  this.about_me.slice(1);
+      }
+      // Capitalize the first letter of address
+      if (this.isModified("address")) {
+            this.address =
+                  this.address.charAt(0).toUpperCase() + this.address.slice(1);
+      }
+      next();
+});
 
 const AdminDashboard = mongoose.model("AdminDashboard", adminDashboardSchema);
 const User = mongoose.model("User", userSchema);

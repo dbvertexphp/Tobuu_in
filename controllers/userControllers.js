@@ -734,19 +734,91 @@ const getAllUsers = asyncHandler(async (req, res) => {
       }
 });
 
-const searchUsers = asyncHandler(async (req, res) => {
-      const { page = 1, name = "" } = req.body;
-      const perPage = 4; // You can adjust this according to your requirements
+const getAllUsersWebsite = asyncHandler(async (req, res) => {
+      const { page = 1, search = "" } = req.body;
+      const perPage = 10; // You can adjust this according to your requirements
 
-      // Build the query based on name and username with case-insensitive search
-      const query = {
-            $or: [
-                  { first_name: { $regex: name, $options: "i" } },
-                  { username: { $regex: name, $options: "i" } },
-            ],
-      };
+      // Build the query based on search
+      let query = {};
+      if (search) {
+            query = {
+                  $or: [
+                        { first_name: { $regex: search, $options: "i" } },
+                        { username: { $regex: search, $options: "i" } },
+                        { last_name: { $regex: search, $options: "i" } },
+                  ],
+            };
+      }
 
       try {
+            if (req.user && req.user._id) {
+                  // Only exclude req.user._id if it's available
+                  query._id = { $ne: req.user._id };
+            }
+
+            const users = await User.find(query)
+                  .select("_id first_name last_name username pic")
+                  .skip((page - 1) * perPage)
+                  .limit(perPage);
+
+            const totalCount = await User.countDocuments(query);
+            const totalPages = Math.ceil(totalCount / perPage);
+
+            // Map each user to an array of promises
+            const transformedUsersPromises = users.map(async (user) => {
+                  let transformedUser = { ...user.toObject() }; // Convert Mongoose document to plain JavaScript object
+                  if (transformedUser.pic) {
+                        const getSignedUrl_pic = await getSignedUrlS3(
+                              transformedUser.pic
+                        );
+                        transformedUser.pic = getSignedUrl_pic;
+                  }
+                  if (transformedUser.watch_time) {
+                        transformedUser.watch_time =
+                              convertSecondsToReadableTime(
+                                    transformedUser.watch_time
+                              );
+                  }
+                  return transformedUser;
+            });
+
+            // Execute all promises concurrently
+            const transformedUsers = await Promise.all(
+                  transformedUsersPromises
+            );
+
+            res.json({
+                  data: transformedUsers,
+                  page: page.toString(),
+                  total_rows: totalCount,
+                  status: true,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
+const searchUsers = asyncHandler(async (req, res) => {
+      const { page = 1, name = "" } = req.body;
+      const perPage = 4; // Aap apni requirements ke hisab se isay adjust kar sakte hain
+
+      try {
+            let query = {
+                  $or: [
+                        { first_name: { $regex: name, $options: "i" } },
+                        { username: { $regex: name, $options: "i" } },
+                  ],
+            };
+
+            // Agar req.user._id available hai, toh user ka data exclude karein
+            if (req.user && req.user._id) {
+                  query._id = { $ne: req.user._id };
+            }
+
             const users = await User.find(query)
                   .select("_id first_name last_name username")
                   .skip((page - 1) * perPage)
@@ -758,13 +830,13 @@ const searchUsers = asyncHandler(async (req, res) => {
                   label: "User List",
             }));
 
-            // if (transformedUsers.length === 4) {
-            //       transformedUsers.push({
-            //             _id: "See_All",
-            //             title: "See All",
-            //             label: "User List",
-            //       });
-            // }
+            if (transformedUsers.length === 4) {
+                  transformedUsers.push({
+                        _id: "See_All",
+                        title: "See All",
+                        label: "User List",
+                  });
+            }
 
             const totalCount = await User.countDocuments(query);
             const totalPages = Math.ceil(totalCount / perPage);
@@ -1307,4 +1379,5 @@ module.exports = {
       updateProfileDataByAdmin,
       getNotificationId,
       searchUsers,
+      getAllUsersWebsite,
 };

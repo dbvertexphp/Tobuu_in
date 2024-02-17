@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const moment = require("moment-timezone");
-const ReviewSchema = new mongoose.Schema({
+const reviewSchema = new mongoose.Schema({
       my_id: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User", // Assuming you have a User model, adjust the ref accordingly
@@ -31,6 +31,16 @@ const ReviewSchema = new mongoose.Schema({
       },
 });
 
-const Review = mongoose.model("Review", ReviewSchema);
+reviewSchema.pre("save", function (next) {
+      // Capitalize the first letter of description
+      if (this.isModified("description")) {
+            this.description =
+                  this.description.charAt(0).toUpperCase() +
+                  this.description.slice(1);
+      }
+      next();
+});
+
+const Review = mongoose.model("Review", reviewSchema);
 
 module.exports = Review;

@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const moment = require("moment-timezone");
-const autoIncrement = require('mongoose-auto-increment');
+const autoIncrement = require("mongoose-auto-increment");
 autoIncrement.initialize(mongoose.connection);
 
 const reelSchema = mongoose.Schema({
@@ -27,6 +27,22 @@ reelSchema.plugin(autoIncrement.plugin, {
       field: "share_Id",
       startAt: 1,
 });
+
+reelSchema.pre("save", function (next) {
+      // Capitalize the first letter of title
+      if (this.isModified("title")) {
+            this.title =
+                  this.title.charAt(0).toUpperCase() + this.title.slice(1);
+      }
+      // Capitalize the first letter of description
+      if (this.isModified("description")) {
+            this.description =
+                  this.description.charAt(0).toUpperCase() +
+                  this.description.slice(1);
+      }
+      next();
+});
+
 const reelLikeSchema = mongoose.Schema({
       user_ids: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
       reel_id: { type: mongoose.Schema.Types.ObjectId, ref: "Reel" },

@@ -40,6 +40,21 @@ const AppliedUserSchema = new mongoose.Schema({
       },
 });
 
+jobSchema.pre("save", function (next) {
+      // Capitalize the first letter of title
+      if (this.isModified("title")) {
+            this.title =
+                  this.title.charAt(0).toUpperCase() + this.title.slice(1);
+      }
+      // Capitalize the first letter of description
+      if (this.isModified("description")) {
+            this.description =
+                  this.description.charAt(0).toUpperCase() +
+                  this.description.slice(1);
+      }
+      next();
+});
+
 const AppliedUser = mongoose.model("PostJobAppliedUser", AppliedUserSchema);
 const PostJob = mongoose.model("PostJob", jobSchema);
 

@@ -15,7 +15,7 @@ const { getSignedUrlS3 } = require("../config/aws-s3.js");
 const uploadPostTimeline = asyncHandler(async (req, res) => {
       const user_id = req.user._id; // Assuming you have user authentication middleware
 
-      const { category_id, description } = req.body;
+      const { category_id, description, title } = req.body;
       if (!category_id || !description) {
             res.status(200).json({
                   message: "Please enter all the required fields.",
@@ -27,6 +27,7 @@ const uploadPostTimeline = asyncHandler(async (req, res) => {
             category_id,
             description,
             user_id,
+            title,
       });
       if (posttimeline) {
             // Increment reels_count in AdminDashboard

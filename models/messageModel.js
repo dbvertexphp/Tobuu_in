@@ -12,6 +12,15 @@ const messageSchema = mongoose.Schema({
       },
 });
 
+messageSchema.pre("save", function (next) {
+      // Capitalize the first letter of description
+      if (this.isModified("content")) {
+            this.content =
+                  this.content.charAt(0).toUpperCase() + this.content.slice(1);
+      }
+      next();
+});
+
 const Message = mongoose.model("Message", messageSchema);
 
 module.exports = Message;
