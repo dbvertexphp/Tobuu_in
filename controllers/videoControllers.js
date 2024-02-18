@@ -14,6 +14,7 @@ const {
       DeleteSignedUrlS3,
 } = require("../config/aws-s3.js");
 require("dotenv").config();
+const baseURL = process.env.BASE_URL;
 
 const getAllVideo = asyncHandler(async (req, res) => {
       const page = parseInt(req.params.page) || 1;
@@ -193,7 +194,7 @@ const getPaginatedVideos = asyncHandler(async (req, res) => {
       const startIndex = (page - 1) * limit;
 
       try {
-            let videoQuery = Video.find();
+            let videoQuery = Video.find({ deleted_at: null });
 
             // Check if category_id is provided in the request body
             if (req.body.category_id) {
@@ -302,6 +303,148 @@ const getPaginatedVideos = asyncHandler(async (req, res) => {
                   status: true,
                   data: transformedVideos,
                   hasMore,
+            });
+      } catch (error) {
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  error: error.message,
+                  status: false,
+            });
+      }
+});
+
+const getPaginatedVideosAdmin = asyncHandler(async (req, res) => {
+      const page = parseInt(req.body.page) || 1;
+      const limit = parseInt(req.query.limit) || 5;
+      const startIndex = (page - 1) * limit;
+
+      try {
+            let videoQuery = Video.find();
+
+            if (req.body.search) {
+                  videoQuery = videoQuery.where({
+                        title: { $regex: req.body.search, $options: "i" },
+                  });
+            }
+
+            // Use Mongoose to fetch paginated videos from the database
+            const paginatedVideos = await videoQuery
+                  .skip(startIndex)
+                  .limit(limit)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic", // Adjust these fields based on your User schema
+                  })
+                  .populate({
+                        path: "category_id",
+                        select: "category_name", // Adjust this field based on your Category schema
+                  });
+
+            const totalVideos = await Video.countDocuments(
+                  videoQuery.getQuery()
+            );
+            const totalPages = Math.ceil(totalVideos / limit);
+            const hasMore = startIndex + paginatedVideos.length < totalVideos;
+
+            if (paginatedVideos.length === 0) {
+                  return res.json({
+                        message: "Video Not Found",
+                        status: true,
+                  });
+            }
+
+            // Transform and exclude specific fields in the response
+            const transformedVideos = [];
+            const token = req.header("Authorization");
+
+            for (const video of paginatedVideos) {
+                  const { video_name, updatedAt, __v, ...response } =
+                        video._doc;
+
+                  let like_status = "No";
+                  let subscribe_status = "No";
+                  let like_count = 0;
+
+                  // Get the total like count for each video
+                  const videoLikeCount = await VideoLike.findOne({
+                        video_id: video._id,
+                  }).select("count");
+
+                  if (videoLikeCount) {
+                        like_count = videoLikeCount.count;
+                  }
+
+                  const pic_name_url = await getSignedUrlS3(video.user_id.pic);
+                  const updatedUser = {
+                        ...video.user_id._doc,
+                        pic: pic_name_url,
+                  };
+
+                  if (token) {
+                        // Check if the user has liked the current video
+                        const isLiked = await VideoLike.exists({
+                              video_id: video._id,
+                              user_ids: req.user._id,
+                        });
+
+                        like_status = isLiked ? "Yes" : "No";
+
+                        // Check if the user has subscribed to the author
+                        const isSubscribed = await Subscribes.exists({
+                              my_id: video.user_id?._id,
+                              subscriber_id: req.user?._id,
+                        });
+
+                        subscribe_status = isSubscribed ? "Yes" : "No";
+                  }
+
+                  const thumbnail_name_url = await getSignedUrlS3(
+                        video.thumbnail_name
+                  );
+                  const video_name_url = await getSignedUrlS3(video.video_name);
+
+                  transformedVideos.push({
+                        ...response,
+                        video_url: video_name_url,
+                        thumbnail_name: thumbnail_name_url,
+                        user_id: updatedUser,
+                        like_count,
+                        like_status,
+                        subscribe_status,
+                  });
+            }
+
+            // Now transformedVideos contains the updated videos with like_count, like_status, and subscribe_status
+
+            const paginationDetails = {
+                  current_page: page,
+                  data: transformedVideos,
+                  first_page_url: `${baseURL}api/videos?page=1&limit=${limit}`,
+                  from: startIndex + 1,
+                  last_page: totalPages,
+                  last_page_url: `${baseURL}api/videos?page=${totalPages}&limit=${limit}`,
+                  next_page_url:
+                        page < totalPages
+                              ? `${baseURL}api/videos?page=${
+                                      page + 1
+                                }&limit=${limit}`
+                              : null,
+                  path: `${baseURL}api/videos`,
+                  per_page: limit,
+                  prev_page_url:
+                        page > 1
+                              ? `${baseURL}api/videos?page=${
+                                      page - 1
+                                }&limit=${limit}`
+                              : null,
+                  to: startIndex + transformedVideos.length,
+                  total: totalVideos,
+            };
+
+            res.json({
+                  Videos: paginationDetails,
+                  page: page.toString(),
+                  total_rows: totalVideos,
             });
       } catch (error) {
             res.status(500).json({
@@ -639,7 +782,7 @@ const getMyVideos = asyncHandler(async (req, res) => {
 
       try {
             // Fetch videos from the database for the given user_id with pagination
-            const videos = await Video.find({ user_id })
+            const videos = await Video.find({ user_id, deleted_at: null })
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -727,7 +870,7 @@ const getUserVideos = asyncHandler(async (req, res) => {
       const startIndex = (page - 1) * limit;
       try {
             // Fetch videos from the database for the given user_id with pagination
-            const videos = await Video.find({ user_id })
+            const videos = await Video.find({ user_id, deleted_at: null })
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -821,7 +964,7 @@ const getVideosThumbnails = asyncHandler(async (req, res) => {
                   ? { category_id } // If category_id is provided, filter by category_id
                   : {}; // If category_id is not provided, don't apply any additional filter
             // Fetch videos based on the limit and category_id (if provided)
-            const videos = await Video.find(query)
+            const videos = await Video.find({ ...query, deleted_at: null }) // Only non-deleted videos will be retrieved
                   .limit(limit)
                   .select("thumbnail_name video_name title");
 
@@ -984,7 +1127,7 @@ const searchVideos = asyncHandler(async (req, res) => {
       };
 
       try {
-            const videos = await Video.find(query)
+            const videos = await Video.find({ ...query, deleted_at: null })
                   .select("_id title")
                   .skip((page - 1) * perPage)
                   .limit(perPage);
@@ -1019,6 +1162,37 @@ const searchVideos = asyncHandler(async (req, res) => {
       }
 });
 
+const VideoAdminStatus = asyncHandler(async (req, res) => {
+      const videoId = req.body.videoId;
+      try {
+            // Find the video by its _id
+            const video = await Video.findById(videoId);
+
+            if (!video) {
+                  return res.status(404).json({ message: "Video not found" });
+            }
+
+            // Check if deleted_at field is null or has a value
+            if (video.deleted_at === null) {
+                  // If deleted_at is null, update it with new Date()
+                  video.deleted_at = new Date();
+            } else {
+                  // If deleted_at has a value, update it with null
+                  video.deleted_at = null;
+            }
+
+            // Save the updated video
+            await video.save();
+
+            return res.status(200).json({
+                  message: "Video soft delete status toggled successfully",
+            });
+      } catch (error) {
+            console.error(error);
+            return res.status(500).json({ message: "Internal Server Error" });
+      }
+});
+
 module.exports = {
       uploadVideo,
       getPaginatedVideos,
@@ -1034,4 +1208,6 @@ module.exports = {
       getVideoUploadUrlS3,
       getAllVideo,
       searchVideos,
+      getPaginatedVideosAdmin,
+      VideoAdminStatus,
 };

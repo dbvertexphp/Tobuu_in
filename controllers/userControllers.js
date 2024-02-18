@@ -653,7 +653,7 @@ const getBankDetails = asyncHandler(async (req, res) => {
 
 const getAllUsers = asyncHandler(async (req, res) => {
       const { page = 1, search = "" } = req.body;
-      const perPage = 2; // You can adjust this according to your requirements
+      const perPage = 10; // You can adjust this according to your requirements
 
       // Build the query based on search
       const query = search

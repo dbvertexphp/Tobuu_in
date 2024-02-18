@@ -14,6 +14,7 @@ const videoSchema = mongoose.Schema({
             type: String,
             default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
       },
+      deleted_at: { type: Date, default: null },
 });
 
 videoSchema.pre("save", function (next) {

@@ -65,20 +65,22 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
                         path: "user_id",
                         select: "first_name last_name pic",
                   });
+            let totalJobs;
 
-            // Check if category_id is provided in the request body
             if (req.body.category_id) {
                   jobQuery = jobQuery
                         .where("category_id")
                         .equals(req.body.category_id);
+                  totalJobs = await PostJob.countDocuments(
+                        { category_id: req.body.category_id } // MongoDB query object for filtering by category_id
+                  );
+            } else {
+                  totalJobs = await PostJob.countDocuments();
             }
 
             const paginatedJobs = await jobQuery.exec();
 
-            const totalJobs = await PostJob.countDocuments();
-            const hasMore =
-                  paginatedJobs.length === limit &&
-                  startIndex + paginatedJobs.length < totalJobs;
+            const hasMore = startIndex + paginatedJobs.length < totalJobs;
 
             if (paginatedJobs.length === 0) {
                   return res.json({
@@ -361,14 +363,19 @@ const getMyJobs = asyncHandler(async (req, res) => {
                   .skip(startIndex)
                   .limit(limit);
 
-            // Apply category filter if category_id is provided
-            if (category_id) {
-                  jobQuery = jobQuery.where("category_id").equals(category_id);
+            let totalJobs;
+
+            if (req.body.category_id) {
+                  jobQuery = jobQuery
+                        .where("category_id")
+                        .equals(req.body.category_id);
+                  totalJobs = await PostJob.countDocuments(
+                        { category_id: req.body.category_id } // MongoDB query object for filtering by category_id
+                  );
+            } else {
+                  totalJobs = await PostJob.countDocuments();
             }
-
             const paginatedJobs = await jobQuery.exec();
-
-            const totalJobs = await PostJob.countDocuments({ user_id });
             const hasMore = startIndex + paginatedJobs.length < totalJobs;
 
             // Transform the data to include user details and applied_count
