@@ -53,7 +53,7 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
       const startIndex = (page - 1) * limit;
 
       try {
-            let jobQuery = PostJob.find()
+            let jobQuery = PostJob.find({ deleted_at: null })
                   .sort({ _id: -1 }) // Reverse sorting to show the latest row first
                   .skip(startIndex)
                   .limit(limit)
@@ -144,6 +144,109 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
       }
 });
 
+const getPaginatedPostJobsAdmin = asyncHandler(async (req, res) => {
+      const page = parseInt(req.body.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const startIndex = (page - 1) * limit;
+
+      try {
+            let postJobQuery = PostJob.find();
+
+            if (req.body.search) {
+                  postJobQuery = postJobQuery.where({
+                        title: { $regex: req.body.search, $options: "i" },
+                  });
+            }
+
+            // Use Mongoose to fetch paginated post jobs from the database
+            const paginatedPostJobs = await postJobQuery
+                  .skip(startIndex)
+                  .limit(limit)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic", // Adjust these fields based on your User schema
+                  });
+
+            const totalPostJobs = await PostJob.countDocuments(
+                  postJobQuery.getQuery()
+            );
+            const totalPages = Math.ceil(totalPostJobs / limit);
+            const hasMore =
+                  startIndex + paginatedPostJobs.length < totalPostJobs;
+
+            if (paginatedPostJobs.length === 0) {
+                  return res.json({
+                        message: "Post Jobs Not Found",
+                        status: true,
+                  });
+            }
+
+            // Transform and exclude specific fields in the response
+            const transformedPostJobs = [];
+            const token = req.header("Authorization");
+
+            for (const postJob of paginatedPostJobs) {
+                  const { updatedAt, __v, ...response } = postJob._doc;
+
+                  // You may need to adjust this logic based on your PostJob schema
+                  // Transforming user pic as an example
+                  const pic_name_url = await getSignedUrlS3(
+                        postJob.user_id.pic
+                  );
+                  const updatedUser = {
+                        ...postJob.user_id._doc,
+                        pic: pic_name_url,
+                  };
+
+                  // Other transformation logic for PostJob
+
+                  transformedPostJobs.push({
+                        ...response,
+                        user_id: updatedUser,
+                        // Other fields as required
+                  });
+            }
+
+            const paginationDetails = {
+                  current_page: page,
+                  data: transformedPostJobs,
+                  first_page_url: `${baseURL}api/postjobs?page=1&limit=${limit}`,
+                  from: startIndex + 1,
+                  last_page: totalPages,
+                  last_page_url: `${baseURL}api/postjobs?page=${totalPages}&limit=${limit}`,
+                  next_page_url:
+                        page < totalPages
+                              ? `${baseURL}api/postjobs?page=${
+                                      page + 1
+                                }&limit=${limit}`
+                              : null,
+                  path: `${baseURL}api/postjobs`,
+                  per_page: limit,
+                  prev_page_url:
+                        page > 1
+                              ? `${baseURL}api/postjobs?page=${
+                                      page - 1
+                                }&limit=${limit}`
+                              : null,
+                  to: startIndex + transformedPostJobs.length,
+                  total: totalPostJobs,
+                  hasMore: hasMore, // Include the hasMore flag in the response
+            };
+
+            res.json({
+                  PostJobs: paginationDetails,
+                  page: page.toString(),
+                  total_rows: totalPostJobs,
+            });
+      } catch (error) {
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  error: error.message,
+                  status: false,
+            });
+      }
+});
+
 const appliedPostJob = asyncHandler(async (req, res) => {
       const { job_id } = req.body;
       const user_id = req.user._id;
@@ -156,10 +259,12 @@ const appliedPostJob = asyncHandler(async (req, res) => {
             const job = await PostJob.findOne({
                   _id: job_id,
                   user_id,
+                  deleted_at: null,
             });
 
             const jobData = await PostJob.findOne({
                   _id: job_id,
+                  deleted_at: null,
             });
             if (job) {
                   return res.json({
@@ -351,11 +456,9 @@ const getMyJobs = asyncHandler(async (req, res) => {
       const page = parseInt(req.params.page) || 1;
       const limit = parseInt(req.query.limit) || 5;
       const startIndex = (page - 1) * limit;
-      const { category_id } = req.body;
-
       try {
             // Use Mongoose to fetch paginated Jobs for the authenticated user
-            let jobQuery = PostJob.find({ user_id })
+            let jobQuery = PostJob.find({ user_id, deleted_at: null })
                   .populate({
                         path: "category_id",
                         select: "category_name",
@@ -369,12 +472,14 @@ const getMyJobs = asyncHandler(async (req, res) => {
                   jobQuery = jobQuery
                         .where("category_id")
                         .equals(req.body.category_id);
-                  totalJobs = await PostJob.countDocuments(
-                        { category_id: req.body.category_id } // MongoDB query object for filtering by category_id
-                  );
+                  totalJobs = await PostJob.countDocuments({
+                        user_id,
+                        category_id: req.body.category_id,
+                  });
             } else {
-                  totalJobs = await PostJob.countDocuments();
+                  totalJobs = await PostJob.countDocuments({ user_id });
             }
+
             const paginatedJobs = await jobQuery.exec();
             const hasMore = startIndex + paginatedJobs.length < totalJobs;
 
@@ -405,6 +510,7 @@ const getMyJobs = asyncHandler(async (req, res) => {
                               category_id: {
                                     category_name:
                                           job.category_id.category_name,
+                                    _id: job.category_id._id,
                               },
 
                               user_id: {
@@ -491,7 +597,7 @@ const getAllJob = asyncHandler(async (req, res) => {
 
       try {
             // Fetch job posts based on the query, with pagination
-            const jobPosts = await PostJob.find(query)
+            const jobPosts = await PostJob.find({ query, deleted_at: null })
                   .skip((page - 1) * perPage)
                   .limit(perPage)
                   .populate({
@@ -601,7 +707,7 @@ const searchJobPosts = asyncHandler(async (req, res) => {
       };
 
       try {
-            const jobPosts = await PostJob.find(query)
+            const jobPosts = await PostJob.find({ query, deleted_at: null })
                   .select("_id title")
                   .skip((page - 1) * perPage)
                   .limit(perPage);
@@ -637,6 +743,37 @@ const searchJobPosts = asyncHandler(async (req, res) => {
       }
 });
 
+const JobAdminStatus = asyncHandler(async (req, res) => {
+      const jobId = req.body.jobId;
+      try {
+            // Find the job by its _id
+            const job = await PostJob.findById(jobId);
+
+            if (!job) {
+                  return res.status(404).json({ message: "Job  not found" });
+            }
+
+            // Check if deleted_at field is null or has a value
+            if (job.deleted_at === null) {
+                  // If deleted_at is null, update it with new Date()
+                  job.deleted_at = new Date();
+            } else {
+                  // If deleted_at has a value, update it with null
+                  job.deleted_at = null;
+            }
+
+            // Save the updated job
+            await job.save();
+
+            return res.status(200).json({
+                  message: "Timeline soft delete status toggled successfully",
+            });
+      } catch (error) {
+            console.error(error);
+            return res.status(500).json({ message: "Internal Server Error" });
+      }
+});
+
 module.exports = {
       uploadPostJob,
       getPaginatedJob,
@@ -648,4 +785,6 @@ module.exports = {
       getAllJob,
       statusUpdate,
       searchJobPosts,
+      getPaginatedPostJobsAdmin,
+      JobAdminStatus,
 };

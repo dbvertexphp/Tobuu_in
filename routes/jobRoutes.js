@@ -10,6 +10,8 @@ const {
       getAllJob,
       statusUpdate,
       searchJobPosts,
+      getPaginatedPostJobsAdmin,
+      JobAdminStatus,
 } = require("../controllers/jobControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
@@ -25,5 +27,12 @@ jobRoutes.route("/getMyJobs/:page").post(protect, getMyJobs);
 jobRoutes.route("/getPaginatedJob/:page").post(commonProtect, getPaginatedJob);
 jobRoutes.route("/getAllJob").post(protect, getAllJob);
 jobRoutes.route("/statusUpdate").post(protect, statusUpdate);
+
+//---------------------- Admin -----------------------------//
+
+jobRoutes
+      .route("/getPaginatedPostJobsAdmin")
+      .post(protect, getPaginatedPostJobsAdmin);
+jobRoutes.route("/JobAdminStatus").post(protect, JobAdminStatus);
 
 module.exports = { jobRoutes };

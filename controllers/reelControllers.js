@@ -93,7 +93,7 @@ const getPaginatedReel = asyncHandler(async (req, res) => {
 
       try {
             // Use Mongoose to fetch paginated Reels from the database
-            const paginatedReels = await Reel.find({})
+            const paginatedReels = await Reel.find({ deleted_at: null })
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -194,6 +194,143 @@ const getPaginatedReel = asyncHandler(async (req, res) => {
       }
 });
 
+const getPaginatedReelsAdmin = asyncHandler(async (req, res) => {
+      const page = parseInt(req.body.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const startIndex = (page - 1) * limit;
+
+      try {
+            let reelQuery = Reel.find();
+
+            if (req.body.search) {
+                  reelQuery = reelQuery.where({
+                        title: { $regex: req.body.search, $options: "i" },
+                  });
+            }
+
+            // Use Mongoose to fetch paginated reels from the database
+            const paginatedReels = await reelQuery
+                  .skip(startIndex)
+                  .limit(limit)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic", // Adjust these fields based on your User schema
+                  })
+                  .populate({
+                        path: "category_id",
+                        select: "category_name", // Adjust this field based on your Category schema
+                  });
+
+            const totalReels = await Reel.countDocuments(reelQuery.getQuery());
+            const totalPages = Math.ceil(totalReels / limit);
+            const hasMore = startIndex + paginatedReels.length < totalReels;
+
+            if (paginatedReels.length === 0) {
+                  return res.json({
+                        message: "Reels Not Found",
+                        status: true,
+                  });
+            }
+
+            // Transform and exclude specific fields in the response
+            const transformedReels = [];
+            const token = req.header("Authorization");
+
+            for (const reel of paginatedReels) {
+                  const { reel_name, updatedAt, __v, ...response } = reel._doc;
+
+                  let like_status = "No";
+                  let subscribe_status = "No";
+                  let like_count = 0;
+
+                  // Get the total like count for each reel
+                  const reelLikeCount = await ReelLike.findOne({
+                        reel_id: reel._id,
+                  }).select("count");
+
+                  if (reelLikeCount) {
+                        like_count = reelLikeCount.count;
+                  }
+
+                  const pic_name_url = await getSignedUrlS3(reel.user_id.pic);
+                  const updatedUser = {
+                        ...reel.user_id._doc,
+                        pic: pic_name_url,
+                  };
+
+                  if (token) {
+                        // Check if the user has liked the current reel
+                        const isLiked = await ReelLike.exists({
+                              reel_id: reel._id,
+                              user_ids: req.user._id,
+                        });
+
+                        like_status = isLiked ? "Yes" : "No";
+
+                        // Check if the user has subscribed to the author
+                        const isSubscribed = await Subscribes.exists({
+                              my_id: reel.user_id?._id,
+                              subscriber_id: req.user?._id,
+                        });
+
+                        subscribe_status = isSubscribed ? "Yes" : "No";
+                  }
+
+                  const thumbnail_name_url = await getSignedUrlS3(
+                        reel.thumbnail_name
+                  );
+                  const reel_name_url = await getSignedUrlS3(reel.reel_name);
+
+                  transformedReels.push({
+                        ...response,
+                        video_url: reel_name_url,
+                        thumbnail_name: thumbnail_name_url,
+                        user_id: updatedUser,
+                        like_count,
+                        like_status,
+                        subscribe_status,
+                  });
+            }
+            const paginationDetails = {
+                  current_page: page,
+                  data: transformedReels,
+                  first_page_url: `${baseURL}api/reels?page=1&limit=${limit}`,
+                  from: startIndex + 1,
+                  last_page: totalPages,
+                  last_page_url: `${baseURL}api/reels?page=${totalPages}&limit=${limit}`,
+                  next_page_url:
+                        page < totalPages
+                              ? `${baseURL}api/reels?page=${
+                                      page + 1
+                                }&limit=${limit}`
+                              : null,
+                  path: `${baseURL}api/reels`,
+                  per_page: limit,
+                  prev_page_url:
+                        page > 1
+                              ? `${baseURL}api/reels?page=${
+                                      page - 1
+                                }&limit=${limit}`
+                              : null,
+                  to: startIndex + transformedReels.length,
+                  total: totalReels,
+                  hasMore: hasMore, // Include the hasMore flag in the response
+            };
+
+            res.json({
+                  Reels: paginationDetails,
+                  page: page.toString(),
+                  total_rows: totalReels,
+            });
+      } catch (error) {
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  error: error.message,
+                  status: false,
+            });
+      }
+});
+
 const getReel_ByCategory = asyncHandler(async (req, res) => {
       const { category_id, page_number } = req.body;
       const limit = parseInt(req.query.limit) || 1; // Default limit set to 10
@@ -201,7 +338,10 @@ const getReel_ByCategory = asyncHandler(async (req, res) => {
       const startIndex = (page - 1) * limit;
 
       try {
-            const paginatedReels = await Reel.find({ category_id }) // Query by category_id
+            const paginatedReels = await Reel.find({
+                  category_id,
+                  deleted_at: null,
+            }) // Query by category_id
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -304,7 +444,7 @@ const getReel_ByCategory = asyncHandler(async (req, res) => {
 const streamReel = asyncHandler(async (req, res) => {
       const reelId = req.params.reelId;
 
-      const reel = await Reel.findById(reelId);
+      const reel = await Reel.findById({ reelId, deleted_at: null });
 
       if (!reel) {
             return res.status(404).json({
@@ -485,7 +625,10 @@ const getReelComments = asyncHandler(async (req, res) => {
             }
 
             // Fetch reel details
-            const reelDetails = await Reel.findOne({ _id: reelId })
+            const reelDetails = await Reel.findOne({
+                  _id: reelId,
+                  deleted_at: null,
+            })
                   .populate({
                         path: "user_id",
                         select: "first_name last_name pic", // Adjust these fields based on your User schema
@@ -590,7 +733,7 @@ const getMyReels = asyncHandler(async (req, res) => {
 
       try {
             // Fetch reels from the database for the given user_id with pagination
-            const reels = await Reel.find({ user_id })
+            const reels = await Reel.find({ user_id, deleted_at: null })
                   .populate({
                         path: "user_id",
                         select: "first_name last_name pic", // Adjust these fields based on your User schema
@@ -684,7 +827,10 @@ const getMyReelsWebsite = asyncHandler(async (req, res) => {
 
       try {
             // Use Mongoose to fetch paginated Reels from the database
-            const paginatedReels = await Reel.find({ user_id })
+            const paginatedReels = await Reel.find({
+                  user_id,
+                  deleted_at: null,
+            })
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -793,7 +939,11 @@ const getMyReel_ByCategory = asyncHandler(async (req, res) => {
       const startIndex = (page - 1) * limit;
 
       try {
-            const paginatedReels = await Reel.find({ user_id, category_id }) // Query by both user_id and category_id
+            const paginatedReels = await Reel.find({
+                  user_id,
+                  category_id,
+                  deleted_at: null,
+            }) // Query by both user_id and category_id
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -903,7 +1053,7 @@ const getUserReels = asyncHandler(async (req, res) => {
 
       try {
             // Fetch reels from the database for the given user_id with pagination
-            const reels = await Reel.find({ user_id })
+            const reels = await Reel.find({ user_id, deleted_at: null })
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -994,7 +1144,7 @@ const getUserReelsWebsite = asyncHandler(async (req, res) => {
       const limit = parseInt(req.query.limit) || 1;
       const startIndex = (page - 1) * limit;
       try {
-            const reels = await Reel.find({ user_id })
+            const reels = await Reel.find({ user_id, deleted_at: null })
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -1085,7 +1235,7 @@ const getReelThumbnails = asyncHandler(async (req, res) => {
                   : {}; // If category_id is not provided, don't apply any additional filter
 
             // Fetch thumbnails based on the limit and category_id (if provided)
-            const thumbnails = await Reel.find(query)
+            const thumbnails = await Reel.find({ query, deleted_at: null })
                   .limit(limit)
                   .select("thumbnail_name title reel_name");
 
@@ -1142,7 +1292,10 @@ const deleteReel = asyncHandler(async (req, res) => {
                   });
             }
 
-            const reelDetails = await Reel.findById(reel_id);
+            const reelDetails = await Reel.findById({
+                  reel_id,
+                  deleted_at: null,
+            });
             if (!reelDetails) {
                   return res.status(403).json({
                         message: "Reels Id Not Found.",
@@ -1241,7 +1394,7 @@ const getAllReels = asyncHandler(async (req, res) => {
             : {};
 
       try {
-            const reels = await Reel.find(query)
+            const reels = await Reel.find({ query, deleted_at: null })
                   .skip((page - 1) * perPage)
                   .limit(perPage)
                   .populate({
@@ -1351,7 +1504,7 @@ const searchReels = asyncHandler(async (req, res) => {
       };
 
       try {
-            const reels = await Reel.find(query)
+            const reels = await Reel.find({ query, deleted_at: null })
                   .select("_id title share_Id")
                   .skip((page - 1) * perPage)
                   .limit(perPage);
@@ -1387,6 +1540,37 @@ const searchReels = asyncHandler(async (req, res) => {
       }
 });
 
+const ReelsAdminStatus = asyncHandler(async (req, res) => {
+      const reelsId = req.body.reelsId;
+      try {
+            // Find the reels by its _id
+            const reels = await Reel.findById(reelsId);
+
+            if (!reels) {
+                  return res.status(404).json({ message: "Reels not found" });
+            }
+
+            // Check if deleted_at field is null or has a value
+            if (reels.deleted_at === null) {
+                  // If deleted_at is null, update it with new Date()
+                  reels.deleted_at = new Date();
+            } else {
+                  // If deleted_at has a value, update it with null
+                  reels.deleted_at = null;
+            }
+
+            // Save the updated reels
+            await reels.save();
+
+            return res.status(200).json({
+                  message: "Reels soft delete status toggled successfully",
+            });
+      } catch (error) {
+            console.error(error);
+            return res.status(500).json({ message: "Internal Server Error" });
+      }
+});
+
 module.exports = {
       uploadReel,
       getPaginatedReel,
@@ -1407,4 +1591,6 @@ module.exports = {
       getMyReel_ByCategory,
       getUserReelsWebsite,
       searchReels,
+      getPaginatedReelsAdmin,
+      ReelsAdminStatus,
 };

@@ -48,10 +48,7 @@ const contactUsSchema = new mongoose.Schema({
 
 const reportSchema = new mongoose.Schema(
       {
-            user_id: {
-                  type: mongoose.Schema.Types.ObjectId,
-                  required: true,
-            },
+            user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
             report_type: {
                   type: String,
                   required: true,

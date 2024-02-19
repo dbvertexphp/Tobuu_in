@@ -19,6 +19,8 @@ const {
       getMyReel_ByCategory,
       getUserReelsWebsite,
       searchReels,
+      getPaginatedReelsAdmin,
+      ReelsAdminStatus,
 } = require("../controllers/reelControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
@@ -51,5 +53,12 @@ reelRoutes.route("/getMyReelsWebsite/:page").post(protect, getMyReelsWebsite);
 reelRoutes.route("/getReelsUploadUrlS3").get(protect, getReelsUploadUrlS3);
 reelRoutes.route("/getAllReels").post(protect, getAllReels);
 reelRoutes.route("/statusUpdate").post(protect, statusUpdate);
+
+//---------------------- Admin -----------------------------//
+
+reelRoutes
+      .route("/getPaginatedReelsAdmin")
+      .post(protect, getPaginatedReelsAdmin);
+reelRoutes.route("/ReelsAdminStatus").post(protect, ReelsAdminStatus);
 
 module.exports = { reelRoutes };

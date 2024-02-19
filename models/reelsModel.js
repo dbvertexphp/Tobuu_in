@@ -21,6 +21,7 @@ const reelSchema = mongoose.Schema({
             type: String,
             default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
       }, // Adjust the maxlength as needed
+      deleted_at: { type: Date, default: null },
 });
 reelSchema.plugin(autoIncrement.plugin, {
       model: "Reel",

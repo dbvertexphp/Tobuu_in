@@ -16,6 +16,7 @@ const timelineSchema = mongoose.Schema({
             type: String,
             default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
       }, // Adjust the maxlength as needed
+      deleted_at: { type: Date, default: null },
 });
 
 timelineSchema.pre("save", function (next) {

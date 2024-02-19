@@ -12,6 +12,8 @@ const {
       getAllTimeline,
       statusUpdate,
       searchPostsOnTimeline,
+      getPaginatedPostTimelinesAdmin,
+      TimelineAdminStatus,
 } = require("../controllers/timelineControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
@@ -40,4 +42,10 @@ timelineRoutes.route("/getMyTimeline").get(protect, getMyTimeline);
 timelineRoutes.route("/getAllTimeline").post(protect, getAllTimeline);
 timelineRoutes.route("/statusUpdate").post(protect, statusUpdate);
 
+//---------------------- Admin -----------------------------//
+
+timelineRoutes
+      .route("/getPaginatedPostTimelinesAdmin")
+      .post(protect, getPaginatedPostTimelinesAdmin);
+timelineRoutes.route("/TimelineAdminStatus").post(protect, TimelineAdminStatus);
 module.exports = { timelineRoutes };

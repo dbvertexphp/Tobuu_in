@@ -79,6 +79,8 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
 
             // Use Mongoose to fetch paginated Timelines from the database
             const paginatedTimelines = await PostTimeline.find(query)
+                  .where("deleted_at")
+                  .equals(null)
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -165,6 +167,110 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
                   data: timelinesWithAdditionalInfo,
                   hasMore,
                   status: true,
+            });
+      } catch (error) {
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  error: error.message,
+                  status: false,
+            });
+      }
+});
+
+const getPaginatedPostTimelinesAdmin = asyncHandler(async (req, res) => {
+      const page = parseInt(req.body.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const startIndex = (page - 1) * limit;
+
+      try {
+            let postTimelineQuery = PostTimeline.find();
+
+            if (req.body.search) {
+                  postTimelineQuery = postTimelineQuery.where({
+                        title: { $regex: req.body.search, $options: "i" },
+                  });
+            }
+
+            // Use Mongoose to fetch paginated post timelines from the database
+            const paginatedPostTimelines = await postTimelineQuery
+                  .skip(startIndex)
+                  .limit(limit)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic", // Adjust these fields based on your User schema
+                  });
+
+            const totalPostTimelines = await PostTimeline.countDocuments(
+                  postTimelineQuery.getQuery()
+            );
+            const totalPages = Math.ceil(totalPostTimelines / limit);
+            const hasMore =
+                  startIndex + paginatedPostTimelines.length <
+                  totalPostTimelines;
+
+            if (paginatedPostTimelines.length === 0) {
+                  return res.json({
+                        message: "Post Timelines Not Found",
+                        status: true,
+                  });
+            }
+
+            // Transform and exclude specific fields in the response
+            const transformedPostTimelines = [];
+            const token = req.header("Authorization");
+
+            for (const postTimeline of paginatedPostTimelines) {
+                  const { updatedAt, __v, ...response } = postTimeline._doc;
+
+                  // You may need to adjust this logic based on your PostTimeline schema
+                  // Transforming user pic as an example
+                  const pic_name_url = await getSignedUrlS3(
+                        postTimeline.user_id.pic
+                  );
+                  const updatedUser = {
+                        ...postTimeline.user_id._doc,
+                        pic: pic_name_url,
+                  };
+
+                  // Other transformation logic for PostTimeline
+
+                  transformedPostTimelines.push({
+                        ...response,
+                        user_id: updatedUser,
+                        // Other fields as required
+                  });
+            }
+
+            const paginationDetails = {
+                  current_page: page,
+                  data: transformedPostTimelines,
+                  first_page_url: `${baseURL}api/posttimelines?page=1&limit=${limit}`,
+                  from: startIndex + 1,
+                  last_page: totalPages,
+                  last_page_url: `${baseURL}api/posttimelines?page=${totalPages}&limit=${limit}`,
+                  next_page_url:
+                        page < totalPages
+                              ? `${baseURL}api/posttimelines?page=${
+                                      page + 1
+                                }&limit=${limit}`
+                              : null,
+                  path: `${baseURL}api/posttimelines`,
+                  per_page: limit,
+                  prev_page_url:
+                        page > 1
+                              ? `${baseURL}api/posttimelines?page=${
+                                      page - 1
+                                }&limit=${limit}`
+                              : null,
+                  to: startIndex + transformedPostTimelines.length,
+                  total: totalPostTimelines,
+                  hasMore: hasMore, // Include the hasMore flag in the response
+            };
+
+            res.json({
+                  PostTimelines: paginationDetails,
+                  page: page.toString(),
+                  total_rows: totalPostTimelines,
             });
       } catch (error) {
             res.status(500).json({
@@ -280,7 +386,8 @@ const addTimelineComment = asyncHandler(async (req, res) => {
             await PostTimeline.findByIdAndUpdate(
                   objectIdTimelineId,
                   { $inc: { comment_count: 1 } }, // Increment comment_count by 1
-                  { new: true } // Return the updated document
+                  { new: true }, // Return the updated document
+                  { deleted_at: null }
             );
 
             res.status(201).json({
@@ -320,7 +427,10 @@ const getTimelineComments = asyncHandler(async (req, res) => {
             // }
 
             // Fetch timeline data with category_name
-            const timelineData = await PostTimeline.findOne({ _id: timelineId })
+            const timelineData = await PostTimeline.findOne({
+                  _id: timelineId,
+                  deleted_at: null,
+            })
                   .populate({
                         path: "user_id",
                         select: "first_name last_name pic", // Adjust these fields based on your User schema
@@ -517,7 +627,10 @@ const getMyTimeline = asyncHandler(async (req, res) => {
       const user_id = req.user._id;
 
       try {
-            const timelines = await PostTimeline.find({ user_id })
+            const timelines = await PostTimeline.find({
+                  user_id,
+                  deleted_at: null,
+            })
                   .populate({
                         path: "user_id",
                         select: "first_name last_name pic",
@@ -595,7 +708,10 @@ const getUserTimeline = asyncHandler(async (req, res) => {
 
       try {
             // Fetch timeline posts from the database for the given user_id with pagination
-            const timelines = await PostTimeline.find({ user_id })
+            const timelines = await PostTimeline.find({
+                  user_id,
+                  deleted_at: null,
+            })
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -686,7 +802,7 @@ const getAllTimeline = asyncHandler(async (req, res) => {
             : {};
 
       try {
-            const users = await PostTimeline.find(query)
+            const users = await PostTimeline.find({ query, deleted_at: null })
                   .skip((page - 1) * perPage)
                   .limit(perPage)
                   .populate({
@@ -790,7 +906,7 @@ const searchPostsOnTimeline = asyncHandler(async (req, res) => {
       };
 
       try {
-            const posts = await PostTimeline.find(query)
+            const posts = await PostTimeline.find({ query, deleted_at: null })
                   .select("_id title")
                   .skip((page - 1) * perPage)
                   .limit(perPage);
@@ -826,6 +942,39 @@ const searchPostsOnTimeline = asyncHandler(async (req, res) => {
       }
 });
 
+const TimelineAdminStatus = asyncHandler(async (req, res) => {
+      const timelineId = req.body.timelineId;
+      try {
+            // Find the timeline by its _id
+            const timeline = await PostTimeline.findById(timelineId);
+
+            if (!timeline) {
+                  return res
+                        .status(404)
+                        .json({ message: "PostTimeline not found" });
+            }
+
+            // Check if deleted_at field is null or has a value
+            if (timeline.deleted_at === null) {
+                  // If deleted_at is null, update it with new Date()
+                  timeline.deleted_at = new Date();
+            } else {
+                  // If deleted_at has a value, update it with null
+                  timeline.deleted_at = null;
+            }
+
+            // Save the updated timeline
+            await timeline.save();
+
+            return res.status(200).json({
+                  message: "Timeline soft delete status toggled successfully",
+            });
+      } catch (error) {
+            console.error(error);
+            return res.status(500).json({ message: "Internal Server Error" });
+      }
+});
+
 module.exports = {
       uploadPostTimeline,
       getPaginatedTimeline,
@@ -839,4 +988,6 @@ module.exports = {
       getAllTimeline,
       statusUpdate,
       searchPostsOnTimeline,
+      getPaginatedPostTimelinesAdmin,
+      TimelineAdminStatus,
 };

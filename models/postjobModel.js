@@ -15,6 +15,7 @@ const jobSchema = mongoose.Schema({
             type: String,
             default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
       },
+      deleted_at: { type: Date, default: null },
 });
 
 const AppliedUserSchema = new mongoose.Schema({

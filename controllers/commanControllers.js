@@ -15,6 +15,7 @@ const {
 } = require("../models/posttimelineModel.js");
 const path = require("path");
 require("dotenv").config();
+const baseURL = process.env.BASE_URL;
 
 const Checklikestatus = asyncHandler(async (req, res) => {
       try {
@@ -138,12 +139,17 @@ const report = asyncHandler(async (req, res) => {
 
 const getAllContact = asyncHandler(async (req, res) => {
       const { page = 1, search = "" } = req.body;
-      const perPage = 2; // You can adjust this according to your requirements
+      const perPage = 10; // You can adjust this according to your requirements
 
       // Build the query based on search
       const query = search
             ? {
-                    $or: [{ message: { $regex: search, $options: "i" } }],
+                    $or: [
+                          { message: { $regex: search, $options: "i" } },
+                          { name: { $regex: search, $options: "i" } },
+                          { email_id: { $regex: search, $options: "i" } },
+                          { mobile_number: { $regex: search, $options: "i" } },
+                    ],
               }
             : {};
 
@@ -207,9 +213,107 @@ const getAllContact = asyncHandler(async (req, res) => {
       }
 });
 
+const getAllReports = asyncHandler(async (req, res) => {
+      const { page = 1, search = "" } = req.body;
+      const perPage = 10; // You can adjust this according to your requirements
+
+      try {
+            let query = {};
+
+            if (search) {
+                  query = {
+                        $or: [
+                              { title: { $regex: search, $options: "i" } },
+                              {
+                                    description: {
+                                          $regex: search,
+                                          $options: "i",
+                                    },
+                              },
+                              // Add other fields you want to search here
+                        ],
+                  };
+            }
+
+            const reports = await Report.find(query)
+                  .skip((page - 1) * perPage)
+                  .limit(perPage)
+                  .populate({
+                        path: "user_id",
+                        select: "_id username", // Select only necessary fields from user_id
+                  })
+                  .lean(); // Convert documents to plain JavaScript objects for modification
+
+            const totalCount = await Report.countDocuments(query);
+            const totalPages = Math.ceil(totalCount / perPage);
+
+            // Iterate through reports and populate type_id fields
+            for (let report of reports) {
+                  if (report.report_type === "video") {
+                        // Populate data from Video table
+                        const videoData = await Video.findById(report.type_id);
+                        report.type_id = videoData
+                              ? { _id: videoData._id, title: videoData.title }
+                              : null;
+                  } else if (report.report_type === "reels") {
+                        // Populate data from Reel table
+                        const reelData = await Reel.findById(report.type_id);
+                        report.type_id = reelData
+                              ? {
+                                      _id: reelData._id,
+                                      title: reelData.title,
+                                      share_Id: reelData.share_Id,
+                                }
+                              : null;
+                  } else if (report.report_type === "timeline") {
+                        // Populate data from Reel table
+                        const timelineData = await PostTimeline.findById(
+                              report.type_id
+                        );
+                        report.type_id = timelineData
+                              ? {
+                                      _id: timelineData._id,
+                                      title: timelineData.title,
+                                }
+                              : null;
+                  }
+            }
+
+            const paginationDetails = {
+                  current_page: parseInt(page),
+                  data: reports,
+                  first_page_url: `${baseURL}api/reports?page=1`,
+                  from: (page - 1) * perPage + 1,
+                  last_page: totalPages,
+                  last_page_url: `${baseURL}api/reports?page=${totalPages}`,
+                  per_page: perPage,
+                  next_page_url: null,
+                  path: `${baseURL}api/users`,
+                  per_page: perPage,
+                  prev_page_url: null,
+                  to: (page - 1) * perPage + reports.length,
+                  total: totalCount,
+                  // Include pagination links here
+            };
+
+            res.json({
+                  Reports: paginationDetails,
+                  page: page.toString(),
+                  total_rows: totalCount,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
 module.exports = {
       Checklikestatus,
       contactUs,
       report,
       getAllContact,
+      getAllReports,
 };

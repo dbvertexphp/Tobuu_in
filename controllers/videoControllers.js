@@ -315,7 +315,7 @@ const getPaginatedVideos = asyncHandler(async (req, res) => {
 
 const getPaginatedVideosAdmin = asyncHandler(async (req, res) => {
       const page = parseInt(req.body.page) || 1;
-      const limit = parseInt(req.query.limit) || 5;
+      const limit = parseInt(req.query.limit) || 10;
       const startIndex = (page - 1) * limit;
 
       try {
@@ -413,9 +413,6 @@ const getPaginatedVideosAdmin = asyncHandler(async (req, res) => {
                         subscribe_status,
                   });
             }
-
-            // Now transformedVideos contains the updated videos with like_count, like_status, and subscribe_status
-
             const paginationDetails = {
                   current_page: page,
                   data: transformedVideos,
@@ -439,6 +436,7 @@ const getPaginatedVideosAdmin = asyncHandler(async (req, res) => {
                               : null,
                   to: startIndex + transformedVideos.length,
                   total: totalVideos,
+                  hasMore: hasMore, // Include the hasMore flag in the response
             };
 
             res.json({
