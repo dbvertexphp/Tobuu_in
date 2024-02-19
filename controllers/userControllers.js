@@ -11,8 +11,9 @@ const {
 } = require("../models/userModel.js");
 const { Reel, ReelLike, ReelComment } = require("../models/reelsModel.js");
 const { Video, VideoLike, VideoComment } = require("../models/videoModel.js");
+const { PostTimeline } = require("../models/posttimelineModel.js");
+const { PostJob } = require("../models/postjobModel.js");
 const Category = require("../models/categoryModel.js");
-
 const Review = require("../models/reviewModel.js");
 const BankDetails = require("../models/bankdetailsModel.js");
 const multer = require("multer");
@@ -887,11 +888,15 @@ const getAllDashboardCount = asyncHandler(async (req, res) => {
             const user = await User.countDocuments();
             const video = await Video.countDocuments();
             const reels = await Reel.countDocuments();
+            const postTimeline = await PostTimeline.countDocuments();
+            const postJob = await PostJob.countDocuments();
             res.status(200).json({
                   category: category,
                   user: user,
                   video: video,
                   reels: reels,
+                  PostTimeline: postTimeline,
+                  PostJob: postJob,
             });
       } catch (error) {
             console.error("Error getting dashboard counts:", error);

@@ -88,12 +88,27 @@ const getReelLikeCount = async (reel_id) => {
 
 const getPaginatedReel = asyncHandler(async (req, res) => {
       const page = parseInt(req.params.page) || 1;
-      const limit = parseInt(req.query.limit) || 1;
+      const limit = parseInt(req.query.limit) || 5;
       const startIndex = (page - 1) * limit;
 
       try {
             // Use Mongoose to fetch paginated Reels from the database
-            const paginatedReels = await Reel.find({ deleted_at: null })
+
+            let reeldQuery = Reel.find({ deleted_at: null });
+
+            if (req.body.category_id) {
+                  reeldQuery = reeldQuery.where({
+                        category_id: req.body.category_id,
+                  });
+            }
+
+            if (req.body.search) {
+                  reeldQuery = reeldQuery.where({
+                        title: { $regex: req.body.search, $options: "i" },
+                  });
+            }
+
+            const paginatedReels = await reeldQuery
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
