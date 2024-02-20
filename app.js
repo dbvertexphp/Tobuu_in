@@ -3,6 +3,8 @@ const connectDB = require("./config/db.js");
 const createSocketIO = require("./config/socket_io.js");
 const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
+const http = require("http");
+const ngrok = require("@ngrok/ngrok");
 // --------------------- Routes -------------------------------
 const { userRoutes } = require("./routes/userRoutes.js");
 const { chatRoutes } = require("./routes/chatRoutes.js");

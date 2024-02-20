@@ -35,7 +35,9 @@ reelRoutes.route("/updateReelViewCount").post(protect, updateReelViewCount);
 reelRoutes
       .route("/getReelComments/:reelId")
       .get(commonProtect, getReelComments);
-reelRoutes.route("/getPaginatedReel").post(commonProtect, getPaginatedReel);
+reelRoutes
+      .route("/getPaginatedReel/:page")
+      .post(commonProtect, getPaginatedReel);
 reelRoutes.route("/getReel_ByCategory").post(commonProtect, getReel_ByCategory);
 reelRoutes.route("/streamReel/:reelId").get(streamReel);
 reelRoutes.route("/getReelThumbnails/:limit").post(getReelThumbnails);
