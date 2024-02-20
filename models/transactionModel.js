@@ -25,6 +25,9 @@ const transactionSchema = new mongoose.Schema({
             type: String,
             required: true,
       },
+      payment_send: {
+            type: String,
+      },
       user_id: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User", // Assuming you have a User model, adjust the ref accordingly
@@ -43,7 +46,6 @@ const transactionSchema = new mongoose.Schema({
 
       datetime: {
             type: String,
-            default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
       },
 });
 

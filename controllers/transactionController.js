@@ -1,8 +1,9 @@
 const express = require("express");
-const crypto = require("crypto-js");
+const crypto = require("crypto");
 const Razorpay = require("razorpay");
 const asyncHandler = require("express-async-handler");
 const Transaction = require("../models/transactionModel");
+const moment = require("moment-timezone");
 
 const instance = new Razorpay({
       key_id: process.env.REZORPAY_KEY,
@@ -24,8 +25,6 @@ const checkout = asyncHandler(async (req, res) => {
 
 const WebhookGet = asyncHandler(async (req, res) => {
       const { event, payload } = req.body;
-      console.log("Webhook data:", JSON.stringify(req.body, null, 2));
-      res.status(200).json({ message: "Webhook received", payload });
       try {
             const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
             const hmac = crypto.createHmac("sha256", secret);
@@ -47,29 +46,35 @@ const WebhookGet = asyncHandler(async (req, res) => {
                   const userId = event.payload.payment.entity.notes.userId;
                   const method = event.payload.payment.entity.method;
                   const convertedAmount = amount / 100;
-                  const newTransaction = await Transaction.create({
-                        payment_id: payment_id,
-                        order_id: orderId,
-                        amount: convertedAmount,
-                        payment_method: method,
-                        payment_status: payment_status,
-                        payment_check_status: status,
 
-                        user_id: userId,
-                        hire_id: hireId,
-                        calendar_id: calendarid,
-                  });
-
-                  console.log(
-                        "newTransaction:",
-                        JSON.stringify(newTransaction)
-                  );
+                  // Find a document with matching fields
+                  const existingTransaction =
+                        await Transaction.findOneAndUpdate(
+                              {
+                                    payment_id: payment_id,
+                                    order_id: orderId,
+                                    amount: convertedAmount,
+                                    payment_method: method,
+                                    user_id: userId,
+                                    hire_id: hireId,
+                                    calendar_id: calendarid,
+                              },
+                              {
+                                    payment_status: payment_status,
+                                    payment_send: "user_to_admin",
+                                    payment_check_status: status,
+                                    datetime: new Date(), // Update datetime field
+                              },
+                              { new: true, upsert: true } // Upsert: Create if not exists, new: Return updated document
+                        );
             } else {
                   console.log("Invalid signature");
             }
       } catch (error) {
             console.error("Error verifying payment details:", error);
       }
+
+      res.status(200).json({ message: "Webhook received", payload });
 });
 
 module.exports = {
