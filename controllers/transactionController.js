@@ -4,6 +4,7 @@ const Razorpay = require("razorpay");
 const asyncHandler = require("express-async-handler");
 const Transaction = require("../models/transactionModel");
 const moment = require("moment-timezone");
+const baseURL = process.env.BASE_URL;
 
 const instance = new Razorpay({
       key_id: process.env.REZORPAY_KEY,
@@ -76,8 +77,221 @@ const WebhookGet = asyncHandler(async (req, res) => {
 
       res.status(200).json({ message: "Webhook received", payload });
 });
+const getAlltransactionList = asyncHandler(async (req, res) => {
+      const { page = 1, search = "" } = req.body;
+      const perPage = 10;
+
+      try {
+            // Populate the fields to be searched
+            const transactions = await Transaction.find({})
+                  .populate({
+                        path: "user_id",
+                        select: "username",
+                  })
+                  .populate({
+                        path: "hire_id",
+                        select: "username",
+                  });
+
+            // Convert UTC to IST and change format
+            const formattedTransactions = transactions.map((transaction) => {
+                  const date = new Date(transaction.datetime);
+                  const ISTDate = date.toLocaleString("en-IN", {
+                        timeZone: "Asia/Kolkata",
+                        day: "numeric",
+                        month: "numeric",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "numeric",
+                        second: "numeric",
+                        hour12: true,
+                  });
+                  return { ...transaction.toObject(), datetime: ISTDate };
+            });
+
+            // Filter transactions based on the search query
+            const filteredTransactions = formattedTransactions.filter(
+                  (transaction) => {
+                        const { user_id, hire_id } = transaction;
+                        const { username: userUsername } = user_id;
+                        const { username: hireUsername } = hire_id;
+
+                        return (
+                              userUsername
+                                    .toLowerCase()
+                                    .includes(search.toLowerCase()) ||
+                              hireUsername
+                                    .toLowerCase()
+                                    .includes(search.toLowerCase())
+                        );
+                  }
+            );
+
+            // Paginate the filtered transactions
+            const totalCount = filteredTransactions.length;
+            const totalPages = Math.ceil(totalCount / perPage);
+            const paginatedTransactions = filteredTransactions.slice(
+                  (page - 1) * perPage,
+                  page * perPage
+            );
+
+            // Prepare pagination details
+            const paginationDetails = {
+                  current_page: parseInt(page),
+                  data: paginatedTransactions,
+                  first_page_url: `${baseURL}api/transactions?page=1`,
+                  from: (page - 1) * perPage + 1,
+                  last_page: totalPages,
+                  last_page_url: `${baseURL}api/transactions?page=${totalPages}`,
+                  links: [
+                        {
+                              url: null,
+                              label: "&laquo; Previous",
+                              active: false,
+                        },
+                        {
+                              url: `${baseURL}api/transactions?page=${page}`,
+                              label: page.toString(),
+                              active: true,
+                        },
+                        {
+                              url: null,
+                              label: "Next &raquo;",
+                              active: false,
+                        },
+                  ],
+                  next_page_url: null,
+                  path: `${baseURL}api/transactions`,
+                  per_page: perPage,
+                  prev_page_url: null,
+                  to: (page - 1) * perPage + paginatedTransactions.length,
+                  total: totalCount,
+                  page: page.toString(),
+                  total_rows: totalCount,
+            };
+
+            // Send response with pagination details
+            res.json({
+                  transactions: paginationDetails,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
+const getAllUserTransactions = asyncHandler(async (req, res) => {
+      const { page = 1, search = "", user_id } = req.body;
+      const perPage = 10;
+
+      try {
+            // Populate the fields to be searched
+            const transactions = await Transaction.find({ user_id })
+                  .populate({
+                        path: "user_id",
+                        select: "username",
+                  })
+                  .populate({
+                        path: "hire_id",
+                        select: "username",
+                  });
+
+            // Convert UTC to IST and change format
+            const formattedTransactions = transactions.map((transaction) => {
+                  const date = new Date(transaction.datetime);
+                  const ISTDate = date.toLocaleString("en-IN", {
+                        timeZone: "Asia/Kolkata",
+                        day: "numeric",
+                        month: "numeric",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "numeric",
+                        second: "numeric",
+                        hour12: true,
+                  });
+                  return { ...transaction.toObject(), datetime: ISTDate };
+            });
+
+            // Filter transactions based on the search query
+            const filteredTransactions = formattedTransactions.filter(
+                  (transaction) => {
+                        const { user_id, hire_id } = transaction;
+                        const { username: userUsername } = user_id;
+                        const { username: hireUsername } = hire_id;
+
+                        return (
+                              userUsername
+                                    .toLowerCase()
+                                    .includes(search.toLowerCase()) ||
+                              hireUsername
+                                    .toLowerCase()
+                                    .includes(search.toLowerCase())
+                        );
+                  }
+            );
+
+            // Paginate the filtered transactions
+            const totalCount = filteredTransactions.length;
+            const totalPages = Math.ceil(totalCount / perPage);
+            const paginatedTransactions = filteredTransactions.slice(
+                  (page - 1) * perPage,
+                  page * perPage
+            );
+
+            // Prepare pagination details
+            const paginationDetails = {
+                  current_page: parseInt(page),
+                  data: paginatedTransactions,
+                  first_page_url: `${baseURL}api/transactions?page=1`,
+                  from: (page - 1) * perPage + 1,
+                  last_page: totalPages,
+                  last_page_url: `${baseURL}api/transactions?page=${totalPages}`,
+                  links: [
+                        {
+                              url: null,
+                              label: "&laquo; Previous",
+                              active: false,
+                        },
+                        {
+                              url: `${baseURL}api/transactions?page=${page}`,
+                              label: page.toString(),
+                              active: true,
+                        },
+                        {
+                              url: null,
+                              label: "Next &raquo;",
+                              active: false,
+                        },
+                  ],
+                  next_page_url: null,
+                  path: `${baseURL}api/transactions`,
+                  per_page: perPage,
+                  prev_page_url: null,
+                  to: (page - 1) * perPage + paginatedTransactions.length,
+                  total: totalCount,
+                  page: page.toString(),
+                  total_rows: totalCount,
+            };
+
+            // Send response with pagination details
+            res.json({
+                  transactions: paginationDetails,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
 
 module.exports = {
       WebhookGet,
       checkout,
+      getAlltransactionList,
+      getAllUserTransactions,
 };

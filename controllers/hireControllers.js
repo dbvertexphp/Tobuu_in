@@ -3,6 +3,7 @@ const { Hire, HireStatus } = require("../models/hireModel.js");
 require("dotenv").config();
 const { createNotification } = require("./notificationControllers.js");
 const { getSignedUrlS3 } = require("../config/aws-s3.js");
+const baseURL = process.env.BASE_URL;
 
 const createHire = asyncHandler(async (req, res) => {
       const { hire_id, amount, calendar_id } = req.body;
@@ -282,98 +283,64 @@ const updateHireStatus = asyncHandler(async (req, res) => {
 });
 
 const getAllHireList = asyncHandler(async (req, res) => {
-      const { page = 1, perPage = 10, search = "" } = req.body;
-
-      console.log("Received Search Term:", search);
-
-      const regexSearch = new RegExp(search, "i");
-      const query = search
-            ? {
-                    $or: [
-                          {
-                                "user_id.first_name": {
-                                      $regex: search,
-                                      $options: "i",
-                                },
-                          },
-                          {
-                                "user_id.last_name": {
-                                      $regex: search,
-                                      $options: "i",
-                                },
-                          },
-                          {
-                                "hire_id.first_name": {
-                                      $regex: search,
-                                      $options: "i",
-                                },
-                          },
-                          {
-                                "hire_id.last_name": {
-                                      $regex: search,
-                                      $options: "i",
-                                },
-                          },
-                    ],
-              }
-            : {};
-
-      console.log("Constructed Query:", query);
+      const { page = 1, search = "" } = req.body;
+      const perPage = 10;
 
       try {
-            const hireList = await Hire.find(query)
-                  .populate([
-                        {
-                              path: "user_id",
-                              select: ["first_name", "last_name", "pic"],
-                        },
-                        {
-                              path: "hire_id",
-                              select: ["first_name", "last_name", "pic"],
-                        },
-                        {
-                              path: "work_status",
-                              select: ["payment_status", "status_code"],
-                        },
-                  ])
-                  .skip((page - 1) * perPage)
-                  .limit(perPage);
+            // Populate the fields to be searched
+            const hires = await Hire.find({})
+                  .populate({
+                        path: "work_status",
+                        select: "payment_status status_code",
+                  })
+                  .populate({
+                        path: "user_id",
+                        select: "username",
+                  })
+                  .populate({
+                        path: "hire_id",
+                        select: "username",
+                  });
 
-            const totalCount = await Hire.countDocuments(query);
-            const totalPages = Math.ceil(totalCount / perPage);
+            // Filter hires based on the search query
+            const filteredHires = hires.filter((hire) => {
+                  const { work_status, user_id, hire_id } = hire;
+                  const { payment_status, status_code } = work_status;
+                  const { username: userUsername } = user_id;
+                  const { username: hireUsername } = hire_id;
 
-            // Process the URLs for profile pictures
-            const processedHireList = hireList.map((hire) => {
-                  return {
-                        user_data: {
-                              user_id: hire.user_id._id,
-                              first_name: hire.user_id.first_name,
-                              last_name: hire.user_id.last_name,
-                              pic: hire.user_id.pic,
-                        },
-                        hire_user_data: {
-                              hire_id: hire.hire_id._id,
-                              first_name: hire.hire_id.first_name,
-                              last_name: hire.hire_id.last_name,
-                              pic: hire.hire_id.pic,
-                        },
-                        work_status: {
-                              payment_status: hire.status.payment_status,
-                              status_code: hire.status.status_code,
-                        },
-                        amount: hire.amount,
-                        datetime: hire.datetime,
-                        calendar_id: hire.calendar_id,
-                  };
+                  return (
+                        payment_status
+                              .toLowerCase()
+                              .includes(search.toLowerCase()) ||
+                        status_code
+                              .toLowerCase()
+                              .includes(search.toLowerCase()) ||
+                        userUsername
+                              .toLowerCase()
+                              .includes(search.toLowerCase()) ||
+                        hireUsername
+                              .toLowerCase()
+                              .includes(search.toLowerCase())
+                  );
             });
 
+            // Paginate the filtered hires
+            const totalCount = filteredHires.length;
+            const totalPages = Math.ceil(totalCount / perPage);
+            const paginatedHires = filteredHires.slice(
+                  (page - 1) * perPage,
+                  page * perPage
+            );
+
+            // Prepare pagination details
             const paginationDetails = {
                   current_page: parseInt(page),
-                  data: processedHireList,
-                  first_page_url: `${process.env.BASE_URL}api/hireList?page=1`,
+                  data: paginatedHires,
+                  first_page_url: `${baseURL}api/hires?page=1`,
                   from: (page - 1) * perPage + 1,
                   last_page: totalPages,
-                  last_page_url: `${process.env.BASE_URL}api/hireList?page=${totalPages}`,
+                  last_page_url: `${baseURL}api/hires?page=${totalPages}`,
                   links: [
                         {
                               url: null,
@@ -381,7 +348,7 @@ const getAllHireList = asyncHandler(async (req, res) => {
                               active: false,
                         },
                         {
-                              url: `${process.env.BASE_URL}api/hireList?page=${page}`,
+                              url: `${baseURL}api/hires?page=${page}`,
                               label: page.toString(),
                               active: true,
                         },
@@ -392,21 +359,25 @@ const getAllHireList = asyncHandler(async (req, res) => {
                         },
                   ],
                   next_page_url: null,
-                  path: `${process.env.BASE_URL}api/hireList`,
+                  path: `${baseURL}api/hires`,
                   per_page: perPage,
                   prev_page_url: null,
-                  to: (page - 1) * perPage + processedHireList.length,
+                  to: (page - 1) * perPage + paginatedHires.length,
                   total: totalCount,
             };
 
+            // Send response with pagination details
             res.json({
-                  HireList: paginationDetails,
+                  Hires: paginationDetails,
                   page: page.toString(),
                   total_rows: totalCount,
             });
       } catch (error) {
-            console.error("Error getting all hire entries:", error.message);
-            res.status(500).json({ error: "Internal Server Error" });
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
       }
 });
 
