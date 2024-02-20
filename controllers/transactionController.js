@@ -2,6 +2,7 @@ const express = require("express");
 const crypto = require("crypto-js");
 const Razorpay = require("razorpay");
 const asyncHandler = require("express-async-handler");
+const Transaction = require("../models/transactionModel");
 
 const instance = new Razorpay({
       key_id: process.env.REZORPAY_KEY,
@@ -23,10 +24,7 @@ const checkout = asyncHandler(async (req, res) => {
 
 const WebhookGet = asyncHandler(async (req, res) => {
       const { event, payload } = req.body;
-
-      console.log("event:", event);
-      console.log("payload:", payload);
-
+      console.log("Webhook data:", JSON.stringify(req.body, null, 2));
       res.status(200).json({ message: "Webhook received", payload });
       try {
             const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
@@ -37,62 +35,40 @@ const WebhookGet = asyncHandler(async (req, res) => {
                   .digest("hex");
 
             if (webhookSignature === generatedSignature) {
-                  // Signature is valid, handle the event
                   const event = req.body;
+                  const payment_status = event.event;
+                  const payment_id = event.payload.payment.entity.id;
                   const orderId = event.payload.payment.entity.order_id;
-                  const courseId = event.payload.payment.entity.notes.courseId;
-
-                  const paymentId = event.payload.payment.entity._id;
+                  const status = event.payload.payment.entity.status;
+                  const amount = event.payload.payment.entity.amount;
+                  const hireId = event.payload.payment.entity.notes.hireId;
+                  const calendarid =
+                        event.payload.payment.entity.notes.calendarid;
+                  const userId = event.payload.payment.entity.notes.userId;
                   const method = event.payload.payment.entity.method;
-                  const time = event.payload.payment.entity.created_at;
-                  const bank = event.payload.payment.entity.bank;
-                  const description = event.payload.payment.entity.description;
-                  let status = "";
+                  const convertedAmount = amount / 100;
+                  const newTransaction = await Transaction.create({
+                        payment_id: payment_id,
+                        order_id: orderId,
+                        amount: convertedAmount,
+                        payment_method: method,
+                        payment_status: payment_status,
+                        payment_check_status: status,
 
-                  if (event === "payment.captured") {
-                        // Condition for captured payment
-                        status = "captured";
-                        await handleSuccessfulPayment(
-                              req.student,
-                              courseId,
-                              orderId
-                        );
-                        console.log(`Order ${orderId} captured successfully`);
-                  } else if (event === "payment.authorized") {
-                        // Condition for authorized payment
-                        status = "authorized";
-                        console.log("Payment Authorization");
-                  } else if (event === "order.paid") {
-                        // Condition for successful payment
-                        status = "successful";
-                        await handleSuccessfulPayment(req.student, courseId);
-                        console.log("Payment Done");
-                  } else if (event === "payment.failed") {
-                        // Condition for failed payment
-                        status = "failed";
-                        console.log("Payment failed");
-                  }
+                        user_id: userId,
+                        hire_id: hireId,
+                        calendar_id: calendarid,
+                  });
 
-                  // Update order fields in the database
-                  await updateOrderFields(
-                        orderId,
-                        status,
-                        paymentId,
-                        method,
-                        time,
-                        bank,
-                        description
+                  console.log(
+                        "newTransaction:",
+                        JSON.stringify(newTransaction)
                   );
-
-                  res.status(200).send("Webhook received successfully");
             } else {
-                  res.status(400).send("Invalid signature");
+                  console.log("Invalid signature");
             }
       } catch (error) {
             console.error("Error verifying payment details:", error);
-            res.status(500).send({
-                  error: error.message || "Internal Server Error",
-            });
       }
 });
 
