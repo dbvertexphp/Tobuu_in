@@ -16,6 +16,7 @@ const {
       searchVideos,
       getPaginatedVideosAdmin,
       VideoAdminStatus,
+      ViewCountAdd,
 } = require("../controllers/videoControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
@@ -42,6 +43,7 @@ videoRoutes
       .get(commonProtect, getUserVideos);
 videoRoutes.route("/getMyVideos/:limit").get(protect, getMyVideos);
 videoRoutes.route("/getVideoUploadUrlS3").get(protect, getVideoUploadUrlS3);
+videoRoutes.route("/ViewCountAdd").post(protect, ViewCountAdd);
 
 //---------------------- Admin -----------------------------//
 

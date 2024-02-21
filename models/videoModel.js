@@ -14,6 +14,13 @@ const videoSchema = mongoose.Schema({
             type: String,
             default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
       },
+      view_user: [
+            {
+                  type: mongoose.Schema.Types.ObjectId,
+                  ref: "User", // Assuming you have a User model, adjust the ref accordingly
+                  required: true,
+            },
+      ],
       deleted_at: { type: Date, default: null },
 });
 

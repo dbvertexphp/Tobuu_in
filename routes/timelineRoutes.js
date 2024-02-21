@@ -14,6 +14,7 @@ const {
       searchPostsOnTimeline,
       getPaginatedPostTimelinesAdmin,
       TimelineAdminStatus,
+      ViewCountAdd,
 } = require("../controllers/timelineControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
@@ -22,6 +23,7 @@ const timelineRoutes = express.Router();
 timelineRoutes.route("/uploadPostTimeline").post(protect, uploadPostTimeline);
 timelineRoutes.route("/searchPostsOnTimeline").post(searchPostsOnTimeline);
 timelineRoutes.route("/addTimelineComment").post(protect, addTimelineComment);
+timelineRoutes.route("/ViewCountAdd").post(protect, ViewCountAdd);
 timelineRoutes.route("/Timelinedelete").delete(protect, Timelinedelete);
 timelineRoutes
       .route("/updateTimelineViewCount")

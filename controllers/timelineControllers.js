@@ -975,6 +975,46 @@ const TimelineAdminStatus = asyncHandler(async (req, res) => {
       }
 });
 
+const ViewCountAdd = asyncHandler(async (req, res) => {
+      const { timelineId } = req.body;
+      const userId = req.user._id;
+
+      try {
+            // Find the timeline by its _id
+            const timeline = await PostTimeline.findById(timelineId);
+
+            if (!timeline) {
+                  return res
+                        .status(404)
+                        .json({ message: "Timeline not found" });
+            }
+
+            // Check if user_id is already in view_user array
+            if (timeline.view_user.includes(userId)) {
+                  return res.status(400).json({
+                        message: "User has already viewed this timeline",
+                  });
+            }
+
+            // Add the user_id to the view_user array
+            timeline.view_user.push(userId);
+
+            // Increment the view_count
+            timeline.view_count += 1;
+
+            // Save the updated timeline
+            await timeline.save();
+
+            return res.status(200).json({
+                  message: "Timeline view count updated successfully",
+                  view_count: timeline.view_count,
+            });
+      } catch (error) {
+            console.error(error);
+            return res.status(500).json({ message: "Internal Server Error" });
+      }
+});
+
 module.exports = {
       uploadPostTimeline,
       getPaginatedTimeline,
@@ -990,4 +1030,5 @@ module.exports = {
       searchPostsOnTimeline,
       getPaginatedPostTimelinesAdmin,
       TimelineAdminStatus,
+      ViewCountAdd
 };

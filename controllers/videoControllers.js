@@ -1109,9 +1109,9 @@ const getVideoUploadUrlS3 = asyncHandler(async (req, res) => {
             randomFilenameThumbnail
       );
 
-      return res.status(400).json({
+      return res.status(200).json({
             message: { videoget_url, thumbnailget_url },
-            status: false,
+            status: true,
       });
 });
 
@@ -1191,6 +1191,44 @@ const VideoAdminStatus = asyncHandler(async (req, res) => {
       }
 });
 
+const ViewCountAdd = asyncHandler(async (req, res) => {
+      const { videoId } = req.body;
+      const userId = req.user._id;
+
+      try {
+            // Find the video by its _id
+            const video = await Video.findById(videoId);
+
+            if (!video) {
+                  return res.status(404).json({ message: "Video not found" });
+            }
+
+            // Check if user_id is already in view_user array
+            if (video.view_user.includes(userId)) {
+                  return res.status(400).json({
+                        message: "User has already viewed this video",
+                  });
+            }
+
+            // Add the user_id to the view_user array
+            video.view_user.push(userId);
+
+            // Increment the view_count
+            video.view_count += 1;
+
+            // Save the updated video
+            await video.save();
+
+            return res.status(200).json({
+                  message: "Video view count updated successfully",
+                  view_count: video.view_count,
+            });
+      } catch (error) {
+            console.error(error);
+            return res.status(500).json({ message: "Internal Server Error" });
+      }
+});
+
 module.exports = {
       uploadVideo,
       getPaginatedVideos,
@@ -1208,4 +1246,5 @@ module.exports = {
       searchVideos,
       getPaginatedVideosAdmin,
       VideoAdminStatus,
+      ViewCountAdd,
 };
