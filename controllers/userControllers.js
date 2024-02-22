@@ -16,6 +16,7 @@ const { PostJob } = require("../models/postjobModel.js");
 const Category = require("../models/categoryModel.js");
 const Review = require("../models/reviewModel.js");
 const BankDetails = require("../models/bankdetailsModel.js");
+const Transaction = require("../models/transactionModel");
 const multer = require("multer");
 const bcrypt = require("bcryptjs");
 const MyFriends = require("../models/myfrindsModel.js");
@@ -652,6 +653,32 @@ const getBankDetails = asyncHandler(async (req, res) => {
       }
 });
 
+const getBankDetailsAdmin = asyncHandler(async (req, res) => {
+      const userId = req.body._id; // Assuming you have user authentication middleware
+
+      try {
+            // Find bank details for the given user ID
+            const bankDetails = await BankDetails.findOne({ userId });
+
+            if (bankDetails) {
+                  res.status(200).json({
+                        bankDetails,
+                        status: true,
+                  });
+            } else {
+                  res.status(200).json({
+                        bankDetails,
+                        status: true,
+                  });
+            }
+      } catch (error) {
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
 const getAllUsers = asyncHandler(async (req, res) => {
       const { page = 1, search = "" } = req.body;
       const perPage = 10; // You can adjust this according to your requirements
@@ -890,6 +917,21 @@ const getAllDashboardCount = asyncHandler(async (req, res) => {
             const reels = await Reel.countDocuments();
             const postTimeline = await PostTimeline.countDocuments();
             const postJob = await PostJob.countDocuments();
+            const transactionAmountSum = await Transaction.aggregate([
+                  {
+                        $group: {
+                              _id: null,
+                              totalAmount: { $sum: "$amount" }, // Summing the "amount" field
+                        },
+                  },
+            ]);
+
+            // Extracting the total sum of the "amount" field
+            const transactionTotalAmount =
+                  transactionAmountSum.length > 0
+                        ? transactionAmountSum[0].totalAmount
+                        : 0;
+
             res.status(200).json({
                   category: category,
                   user: user,
@@ -897,6 +939,7 @@ const getAllDashboardCount = asyncHandler(async (req, res) => {
                   reels: reels,
                   PostTimeline: postTimeline,
                   PostJob: postJob,
+                  transactionTotalAmount: transactionTotalAmount,
             });
       } catch (error) {
             console.error("Error getting dashboard counts:", error);
@@ -1280,7 +1323,7 @@ function convertSecondsToReadableTime(seconds) {
       } else if (minutes > 0) {
             return `${minutes} min`;
       } else {
-            return "";
+            return 0;
       }
 }
 
@@ -1356,6 +1399,46 @@ const getProfilePicUploadUrlS3 = asyncHandler(async (req, res) => {
       });
 });
 
+const updateUserWatchTime = async (req, res) => {
+      const userId = req.user._id;
+      const newTime = req.body.time; // Assuming the new time is passed in the request body
+
+      try {
+            // Find the user by user_id to get the current watch_time
+            const user = await User.findById(userId);
+
+            if (!user) {
+                  return res.status(404).json({
+                        message: "User not found",
+                        status: false,
+                  });
+            }
+
+            // Get the current watch_time from the user object
+            let currentWatchTime = user.watch_time || 0;
+
+            // Convert the current watch_time and new time to numbers and add them
+            currentWatchTime = Number(currentWatchTime) + Number(newTime);
+
+            // Update the watch_time field in the User table
+            await User.findByIdAndUpdate(userId, {
+                  watch_time: currentWatchTime,
+            });
+
+            return res.json({
+                  message: "Watch time updated successfully",
+                  status: true,
+                  watch_time: currentWatchTime,
+            });
+      } catch (error) {
+            console.error(error);
+            return res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+};
+
 module.exports = {
       getUsers,
       registerUser,
@@ -1374,6 +1457,7 @@ module.exports = {
       Watch_time_update,
       getUserView,
       getBankDetails,
+      getBankDetailsAdmin,
       websiteNotificationToken,
       NotificationList,
       ForgetresendOTP,
@@ -1385,4 +1469,5 @@ module.exports = {
       getNotificationId,
       searchUsers,
       getAllUsersWebsite,
+      updateUserWatchTime,
 };

@@ -381,10 +381,41 @@ const getAllHireList = asyncHandler(async (req, res) => {
       }
 });
 
+const HirePaymentUpdateStatus = asyncHandler(async (req, res) => {
+      const { hireId } = req.body; // Assuming you pass the hireId in the request body
+
+      try {
+            // Find the hire record by its hireId
+            const hire = await Hire.findById(hireId);
+
+            if (!hire) {
+                  return res
+                        .status(404)
+                        .json({ message: "Hire record not found" });
+            }
+
+            // Toggle the Payment_status between "Paid" and "Unpaid"
+            hire.Payment_status =
+                  hire.Payment_status === "Paid" ? "Unpaid" : "Paid";
+
+            // Save the updated hire record
+            await hire.save();
+
+            return res.status(200).json({
+                  message: "Payment status updated successfully",
+                  hire: hire, // Optionally, you can return the updated hire record
+            });
+      } catch (error) {
+            console.error(error);
+            return res.status(500).json({ message: "Internal Server Error" });
+      }
+});
+
 module.exports = {
       createHire,
       getHireListByUserId,
       updateHireStatus,
       getAllHireList,
       getHireByMe,
+      HirePaymentUpdateStatus,
 };

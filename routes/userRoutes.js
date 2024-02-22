@@ -28,6 +28,8 @@ const {
       getNotificationId,
       searchUsers,
       getAllUsersWebsite,
+      getBankDetailsAdmin,
+      updateUserWatchTime,
 } = require("../controllers/userControllers.js");
 const {
       CreateCalendar,
@@ -41,6 +43,7 @@ const {
       updateHireStatus,
       getAllHireList,
       getHireByMe,
+      HirePaymentUpdateStatus,
 } = require("../controllers/hireControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
@@ -67,7 +70,9 @@ userRoutes.route("/ChangePassword").put(protect, ChangePassword);
 userRoutes.route("/profilePicUpload").put(protect, profilePicUpload);
 userRoutes.route("/bankdetailsUpload").post(protect, bank_Detail_create);
 userRoutes.route("/getBankDetails").get(protect, getBankDetails);
+userRoutes.route("/getBankDetailsAdmin").post(protect, getBankDetailsAdmin);
 userRoutes.route("/addReview").post(protect, addReview);
+userRoutes.route("/updateUserWatchTime").post(protect, updateUserWatchTime);
 userRoutes.route("/getReview/:id/:limit").get(getReview);
 userRoutes.route("/Watch_time_update").post(protect, Watch_time_update);
 userRoutes
@@ -89,6 +94,9 @@ userRoutes.route("/GetNormalEntries").get(protect, GetNormalEntries);
 /*------------- Hire Routes --------------------- */
 userRoutes.route("/createHire").post(protect, createHire);
 userRoutes.route("/updateHireStatus").post(protect, updateHireStatus);
+userRoutes
+      .route("/HirePaymentUpdateStatus")
+      .post(protect, HirePaymentUpdateStatus);
 userRoutes.route("/getHireList").get(protect, getHireListByUserId);
 userRoutes.route("/getHireByMe").get(protect, getHireByMe);
 

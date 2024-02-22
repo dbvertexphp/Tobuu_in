@@ -36,7 +36,7 @@ app.use(express.json()); // to accept JSON data
 app.use(cors());
 app.use(
       cors({
-            origin: "*",
+            origin: "*", // Replace with your React app's origin
       })
 );
 
