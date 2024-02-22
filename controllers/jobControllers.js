@@ -368,6 +368,7 @@ const getAppliedJobs = asyncHandler(async (req, res) => {
                                                 pic: pic_name_url,
                                           },
                                           description: job_id.description,
+                                          title: job_id.title,
                                           createdAt,
                                           updatedAt,
                                           __v,
