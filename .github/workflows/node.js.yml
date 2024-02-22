@@ -24,6 +24,5 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm update --force
-    - run: pm2 restart app
+   
   

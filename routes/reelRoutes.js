@@ -21,6 +21,7 @@ const {
       searchReels,
       getPaginatedReelsAdmin,
       ReelsAdminStatus,
+      getPaginatedReelWebsite,
 } = require("../controllers/reelControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
@@ -38,6 +39,9 @@ reelRoutes
 reelRoutes
       .route("/getPaginatedReel/:page")
       .post(commonProtect, getPaginatedReel);
+      reelRoutes
+      .route("/getPaginatedReelWebsite/:page")
+      .post(commonProtect, getPaginatedReelWebsite);
 reelRoutes.route("/getReel_ByCategory").post(commonProtect, getReel_ByCategory);
 reelRoutes.route("/streamReel/:reelId").get(streamReel);
 reelRoutes.route("/getReelThumbnails/:limit").post(getReelThumbnails);

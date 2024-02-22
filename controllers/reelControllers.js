@@ -834,6 +834,129 @@ const getMyReels = asyncHandler(async (req, res) => {
       }
 });
 
+const getPaginatedReelWebsite = asyncHandler(async (req, res) => {
+      const page = parseInt(req.params.page) || 1;
+      const limit = parseInt(req.query.limit) || 1;
+      const startIndex = (page - 1) * limit;
+
+      try {
+            // Use Mongoose to fetch paginated Reels from the database
+
+            let reeldQuery = Reel.find({ deleted_at: null });
+
+            if (req.body.category_id) {
+                  reeldQuery = reeldQuery.where({
+                        category_id: req.body.category_id,
+                  });
+            }
+
+            if (req.body.search) {
+                  reeldQuery = reeldQuery.where({
+                        title: { $regex: req.body.search, $options: "i" },
+                  });
+            }
+
+            const paginatedReels = await reeldQuery
+                  .skip(startIndex)
+                  .limit(limit)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic", // Adjust these fields based on your User schema
+                  })
+                  .populate({
+                        path: "category_id",
+                        select: "category_name", // Adjust this field based on your Category schema
+                  });
+
+            const totalReels = await Reel.countDocuments();
+            const hasMore = startIndex + paginatedReels.length < totalReels;
+
+            if (paginatedReels.length === 0) {
+                  return res.json({
+                        message: "Reels Not Found",
+                        status: true,
+                        data: [],
+                  });
+            }
+
+            // Transform and exclude specific fields in the response
+            const transformedReels = [];
+
+            const token = req.header("Authorization");
+
+            for (const reel of paginatedReels) {
+                  const { reel_name, updatedAt, __v, ...response } = reel._doc;
+
+                  let like_status = "No";
+                  let subscribe_status = "No";
+                  let like_count = 0;
+
+                  // Get the like count for each reel
+                  const reelLikeCount = await ReelLike.find({
+                        reel_id: reel._id,
+                  });
+
+                  for (const reelLikeCountUpdate of reelLikeCount) {
+                        like_count = reelLikeCountUpdate.count; // Fix the assignment here, use '=' instead of ':'
+                  }
+                  const pic_name_url = await getSignedUrlS3(reel.user_id.pic);
+                  // Add the base URL to the user's profile picture
+                  const updatedUser = {
+                        ...reel.user_id._doc,
+                        pic: pic_name_url,
+                  };
+
+                  if (token) {
+                        // Check if the user has liked the current reel
+                        const isLiked = await ReelLike.exists({
+                              reel_id: reel._id,
+                              user_ids: req.user._id,
+                        });
+
+                        // Set like_status based on whether the user has liked the reel
+                        like_status = isLiked ? "Yes" : "No";
+
+                        // Check if the user has subscribed to the author
+                        const isSubscribed = await Subscribes.exists({
+                              my_id: reel.user_id._id,
+                              subscriber_id: req.user._id,
+                        });
+
+                        // Set subscribe_status based on whether the user has subscribed to the author
+                        subscribe_status = isSubscribed ? "Yes" : "No";
+                  }
+                  const thumbnail_name_url = await getSignedUrlS3(
+                        reel.thumbnail_name
+                  );
+                  const video_name_url = await getSignedUrlS3(reel.reel_name);
+
+                  transformedReels.push({
+                        ...response,
+                        reel_url: video_name_url,
+                        thumbnail_name: thumbnail_name_url,
+                        user_id: updatedUser,
+                        like_count,
+                        like_status,
+                        subscribe_status,
+                  });
+            }
+
+            res.json({
+                  page,
+                  limit,
+                  data: transformedReels,
+                  hasMore,
+                  status: true,
+            });
+      } catch (error) {
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  error: error.message,
+                  status: false,
+            });
+      }
+});
+
 const getMyReelsWebsite = asyncHandler(async (req, res) => {
       const user_id = req.user._id; // Assuming you have user authentication middleware
       const page = parseInt(req.params.page) || 1;
@@ -1245,17 +1368,19 @@ const getReelThumbnails = asyncHandler(async (req, res) => {
             const category_id = req.body.category_id;
 
             // Construct the query based on whether category_id is provided or not
-            const query = category_id
-                  ? { category_id } // If category_id is provided, filter by category_id
-                  : {}; // If category_id is not provided, don't apply any additional filter
+            const query = category_id ? { category_id } : {};
+
+            // Include the condition for deleted_at: null
+            query.deleted_at = null;
 
             // Fetch thumbnails based on the limit and category_id (if provided)
-            const thumbnails = await Reel.find({ query, deleted_at: null })
+            const thumbnails = await Reel.find(query)
                   .limit(limit)
-                  .select("thumbnail_name title reel_name");
+                  .select("thumbnail_name title reel_name")
+                  .exec();
 
             if (!thumbnails || thumbnails.length === 0) {
-                  return res.status(200).json({
+                  return res.status(404).json({
                         message: "No Reel Found.",
                         status: false,
                   });
@@ -1608,4 +1733,5 @@ module.exports = {
       searchReels,
       getPaginatedReelsAdmin,
       ReelsAdminStatus,
+      getPaginatedReelWebsite,
 };
