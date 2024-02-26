@@ -25,7 +25,7 @@ require("dotenv").config();
 const baseURL = process.env.BASE_URL;
 const { createNotification } = require("./notificationControllers.js");
 const { PutObjectProfilePic, getSignedUrlS3 } = require("../config/aws-s3.js");
-
+const dayjs = require("dayjs");
 const getUsers = asyncHandler(async (req, res) => {
       const userId = req.user._id;
       try {
@@ -37,10 +37,15 @@ const getUsers = asyncHandler(async (req, res) => {
                         status: false,
                   });
             }
+
+            // Convert dob to desired format using dayjs
+            const formattedDOB = dayjs(user.dob).format("YYYY-MM-DD");
+
             const updatedUser = {
                   ...user._doc,
                   pic: user.pic,
                   watch_time: convertSecondsToReadableTime(user.watch_time),
+                  dob: formattedDOB, // Update dob with formatted date
             };
 
             res.json({
@@ -163,6 +168,15 @@ const registerUser = asyncHandler(async (req, res) => {
       if (mobileExists) {
             res.status(200).json({
                   message: "User with this mobile number already exists.",
+                  status: false,
+            });
+            return;
+      }
+
+      const EmailExists = await User.findOne({ email });
+      if (EmailExists) {
+            res.status(200).json({
+                  message: "User with this Email already exists.",
                   status: false,
             });
             return;

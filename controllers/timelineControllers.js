@@ -70,17 +70,24 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
       const startIndex = (page - 1) * limit;
 
       try {
-            const category_id = req.body.category_id; // Added category_id extraction from query parameters
+            const category_id = req.body.category_id; // Extract category_id from query parameters
+            const search = req.body.search; // Extract search term from query parameters
 
-            // Construct the query based on whether category_id is provided or not
-            const query = category_id
-                  ? { category_id } // If category_id is provided, filter by category_id
-                  : {}; // If category_id is not provided, don't apply any additional filter
+            // Construct the query based on category_id, search term, and deleted_at: null
+            const query = {
+                  deleted_at: null, // Include only posts where deleted_at is null
+            };
 
-            // Use Mongoose to fetch paginated Timelines from the database
+            if (category_id) {
+                  query.category_id = category_id; // Filter by category_id if provided
+            }
+
+            if (search) {
+                  query.title = { $regex: search, $options: "i" }; // Search by title if search term provided
+            }
+
+            // Fetch paginated Timelines from the database based on the constructed query
             const paginatedTimelines = await PostTimeline.find(query)
-                  .where("deleted_at")
-                  .equals(null)
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -92,7 +99,7 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
                         select: "category_name",
                   });
 
-            // Calculate totalTimelines with category filter applied
+            // Calculate totalTimelines with the applied filters
             const totalTimelines = await PostTimeline.countDocuments(query);
 
             const hasMore =
@@ -114,6 +121,7 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
                         let subscribe_status = "No";
                         let like_count = 0;
 
+                        // Fetch like count for the timeline
                         const likeCount = await getTimelineLikeCount(
                               timeline._id
                         );
@@ -127,7 +135,6 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
                         const pic_name_url = await getSignedUrlS3(
                               timeline.user_id.pic
                         );
-
                         const updatedUser = timeline.user_id
                               ? {
                                       ...timeline.user_id._doc,
@@ -136,6 +143,7 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
                               : null;
 
                         if (token) {
+                              // Check if the user has liked the timeline
                               const isLiked = await PostTimelineLike.exists({
                                     post_timeline_id: timeline._id,
                                     user_ids: req.user._id,
@@ -143,6 +151,7 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
 
                               like_status = isLiked ? "Yes" : "No";
 
+                              // Check if the user has subscribed to the timeline user
                               const issubscribe = await Subscribes.exists({
                                     my_id: timeline.user_id._id,
                                     subscriber_id: req.user._id,
@@ -903,10 +912,11 @@ const searchPostsOnTimeline = asyncHandler(async (req, res) => {
       // Build the query based on title with case-insensitive search
       const query = {
             title: { $regex: title, $options: "i" },
+            deleted_at: null, // Assuming deleted_at is a field to mark deleted posts
       };
 
       try {
-            const posts = await PostTimeline.find({ query, deleted_at: null })
+            const posts = await PostTimeline.find(query)
                   .select("_id title")
                   .skip((page - 1) * perPage)
                   .limit(perPage);
@@ -1030,5 +1040,5 @@ module.exports = {
       searchPostsOnTimeline,
       getPaginatedPostTimelinesAdmin,
       TimelineAdminStatus,
-      ViewCountAdd
+      ViewCountAdd,
 };

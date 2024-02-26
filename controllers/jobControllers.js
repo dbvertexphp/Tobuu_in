@@ -54,7 +54,7 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
 
       try {
             let jobQuery = PostJob.find({ deleted_at: null })
-                  .sort({ _id: -1 }) // Reverse sorting to show the latest row first
+                  .sort({ _id: -1 })
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -65,17 +65,28 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
                         path: "user_id",
                         select: "first_name last_name pic",
                   });
+
             let totalJobs;
 
-            if (req.body.category_id) {
-                  jobQuery = jobQuery
-                        .where("category_id")
-                        .equals(req.body.category_id);
-                  totalJobs = await PostJob.countDocuments(
-                        { category_id: req.body.category_id } // MongoDB query object for filtering by category_id
-                  );
+            const category_id = req.body.category_id; // URL parameter for category_id
+            const search = req.body.search; // URL parameter for search
+
+            if (category_id) {
+                  jobQuery = jobQuery.where("category_id").equals(category_id);
+                  totalJobs = await PostJob.countDocuments({
+                        category_id,
+                        deleted_at: null,
+                  });
+            } else if (search) {
+                  jobQuery = jobQuery.where("title", new RegExp(search, "i"));
+                  totalJobs = await PostJob.countDocuments({
+                        title: search,
+                        deleted_at: null,
+                  });
             } else {
-                  totalJobs = await PostJob.countDocuments();
+                  totalJobs = await PostJob.countDocuments({
+                        deleted_at: null,
+                  });
             }
 
             const paginatedJobs = await jobQuery.exec();
@@ -89,41 +100,31 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
                   });
             }
 
-            // Remaining code for processing and returning the response...
-            // This part of the code remains the same as before
-            // You can include the logic for modifying and returning the response data here
             const token = req.header("Authorization");
 
             const jobsWithAdditionalInfo = await Promise.all(
                   paginatedJobs.map(async (job) => {
-                        let apply_status = "No"; // Move the declaration inside the loop
+                        let apply_status = "No";
 
                         if (token) {
-                              // Check if the user has applied for the current job
                               const hasApplied = await AppliedUser.exists({
                                     job_id: job._id,
                                     user_ids: req.user._id,
                               });
-
-                              // Set apply_status based on whether the user has applied for the job
                               apply_status = hasApplied ? "Yes" : "No";
                         }
+
                         const pic_name_url = await getSignedUrlS3(
                               job.user_id.pic
                         );
-                        // Add the base URL to the user's profile picture
                         const updatedUser = job.user_id
-                              ? {
-                                      ...job.user_id._doc,
-                                      pic: pic_name_url,
-                                }
+                              ? { ...job.user_id._doc, pic: pic_name_url }
                               : null;
 
                         return {
                               ...job._doc,
                               user_id: updatedUser,
-                              apply_status: apply_status, // Add apply_status to the response
-                              // Add additional fields here if needed
+                              apply_status: apply_status,
                         };
                   })
             );
@@ -132,7 +133,7 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
                   page,
                   limit,
                   status: true,
-                  data: jobsWithAdditionalInfo, // Return the paginated jobs data
+                  data: jobsWithAdditionalInfo,
                   hasMore,
             });
       } catch (error) {
@@ -708,7 +709,7 @@ const searchJobPosts = asyncHandler(async (req, res) => {
       };
 
       try {
-            const jobPosts = await PostJob.find({ query, deleted_at: null })
+            const jobPosts = await PostJob.find({ ...query, deleted_at: null })
                   .select("_id title")
                   .skip((page - 1) * perPage)
                   .limit(perPage);

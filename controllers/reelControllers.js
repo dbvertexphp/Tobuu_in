@@ -1644,7 +1644,7 @@ const searchReels = asyncHandler(async (req, res) => {
       };
 
       try {
-            const reels = await Reel.find({ query, deleted_at: null })
+            const reels = await Reel.find({ ...query, deleted_at: null })
                   .select("_id title share_Id")
                   .skip((page - 1) * perPage)
                   .limit(perPage);

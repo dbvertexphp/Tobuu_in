@@ -3,6 +3,7 @@ const MyFriends = require("../models/myfrindsModel.js");
 const { User } = require("../models/userModel.js");
 const { createNotification } = require("./notificationControllers.js");
 const { NotificationMessages } = require("../models/userModel.js");
+const { getSignedUrlS3 } = require("../config/aws-s3.js");
 
 const SendFriendRequest = asyncHandler(async (req, res) => {
       try {
@@ -182,14 +183,17 @@ const getMyFriends = asyncHandler(async (req, res) => {
                   });
             }
 
-            const friends = myFriends.friends_id.map((friend) => {
-                  return {
-                        first_name: friend.first_name,
-                        last_name: friend.last_name,
-                        pic: `${friend.pic}`, // Assuming pic is the path to the image
-                        _id: friend._id,
-                  };
-            });
+            const friends = await Promise.all(
+                  myFriends.friends_id.map(async (friend) => {
+                        const pic = await getSignedUrlS3(`${friend.pic}`); // Assuming pic is the path to the image
+                        return {
+                              first_name: friend.first_name,
+                              last_name: friend.last_name,
+                              pic: pic,
+                              _id: friend._id,
+                        };
+                  })
+            );
 
             if (friends.length === 0) {
                   return res.status(200).json({
