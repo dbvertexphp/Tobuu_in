@@ -217,9 +217,59 @@ const getMyFriends = asyncHandler(async (req, res) => {
       }
 });
 
+const getMyFriendsAdd = asyncHandler(async (req, res) => {
+      try {
+            const user_id = req.user._id;
+
+            // Find MyFriends documents where the user's id is in friends_id array
+            const myFriends = await MyFriends.find({
+                  friends_id: user_id,
+            }).populate({
+                  path: "my_id",
+                  select: "first_name last_name pic _id",
+            });
+
+            if (!myFriends || myFriends.length === 0) {
+                  return res.status(404).json({
+                        status: false,
+                        message: "No friends found for the user",
+                  });
+            }
+
+            // Map over the myFriends array to extract details and generate signed URLs
+            const friends = await Promise.all(
+                  myFriends.map(async (friend) => {
+                        // Generate signed URL for pic using getSignedUrlS3 function
+                        const pic = await getSignedUrlS3(friend.my_id.pic);
+
+                        // Return friend details with signed URL
+                        return {
+                              first_name: friend.my_id.first_name,
+                              last_name: friend.my_id.last_name,
+                              pic: pic,
+                              _id: friend.my_id._id,
+                        };
+                  })
+            );
+
+            // Send the list of friends in the response
+            res.status(200).json({
+                  status: true,
+                  friends: friends,
+            });
+      } catch (error) {
+            console.error("Error getting friends:", error);
+            res.status(500).json({
+                  status: false,
+                  message: "Internal Server Error",
+            });
+      }
+});
+
 const getMyFriendsrequests = asyncHandler(async (req, res) => {
       try {
             const user_id = req.user._id;
+
             // Find the MyFriends document for the user
             const myFriends = await MyFriends.findOne({
                   my_id: user_id,
@@ -235,14 +285,21 @@ const getMyFriendsrequests = asyncHandler(async (req, res) => {
                   });
             }
 
-            const friends = myFriends.request_id.map((friend) => {
-                  return {
-                        first_name: friend.first_name,
-                        last_name: friend.last_name,
-                        pic: `${friend.pic}`, // Assuming pic is the path to the image
-                        _id: friend._id,
-                  };
-            });
+            // Map over the request_id array to extract details and generate signed URLs
+            const friends = await Promise.all(
+                  myFriends.request_id.map(async (friend) => {
+                        // Generate signed URL for pic using getSignedUrlS3 function
+                        const pic = await getSignedUrlS3(friend.pic);
+
+                        // Return friend details with signed URL
+                        return {
+                              first_name: friend.first_name,
+                              last_name: friend.last_name,
+                              pic: pic,
+                              _id: friend._id,
+                        };
+                  })
+            );
 
             if (friends.length === 0) {
                   return res.status(200).json({
@@ -271,4 +328,5 @@ module.exports = {
       getMyFriends,
       AcceptFriendRequest,
       getMyFriendsrequests,
+      getMyFriendsAdd,
 };
