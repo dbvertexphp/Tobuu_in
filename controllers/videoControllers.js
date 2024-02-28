@@ -318,6 +318,9 @@ const getPaginatedVideosAdmin = asyncHandler(async (req, res) => {
       const limit = parseInt(req.query.limit) || 10;
       const startIndex = (page - 1) * limit;
 
+      // Extract Short from the request body
+      const { Short } = req.body;
+
       try {
             let videoQuery = Video.find();
 
@@ -327,8 +330,18 @@ const getPaginatedVideosAdmin = asyncHandler(async (req, res) => {
                   });
             }
 
+            let sortCriteria = {};
+            if (Short === "view_count") {
+                  sortCriteria = { view_count: -1 }; // Sort by review in descending order
+            } else if (Short === "comment_count") {
+                  sortCriteria = { comment_count: -1 }; // Sort by watch_time in descending order
+            } else {
+                  sortCriteria = { _id: -1 }; // Default sorting
+            }
+
             // Use Mongoose to fetch paginated videos from the database
             const paginatedVideos = await videoQuery
+                  .sort(sortCriteria)
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -339,7 +352,6 @@ const getPaginatedVideosAdmin = asyncHandler(async (req, res) => {
                         path: "category_id",
                         select: "category_name", // Adjust this field based on your Category schema
                   });
-
             const totalVideos = await Video.countDocuments(
                   videoQuery.getQuery()
             );

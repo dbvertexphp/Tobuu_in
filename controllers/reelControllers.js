@@ -213,6 +213,7 @@ const getPaginatedReelsAdmin = asyncHandler(async (req, res) => {
       const page = parseInt(req.body.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
       const startIndex = (page - 1) * limit;
+      const { Short } = req.body;
 
       try {
             let reelQuery = Reel.find();
@@ -223,8 +224,18 @@ const getPaginatedReelsAdmin = asyncHandler(async (req, res) => {
                   });
             }
 
+            let sortCriteria = {};
+            if (Short === "view_count") {
+                  sortCriteria = { view_count: -1 }; // Sort by review in descending order
+            } else if (Short === "comment_count") {
+                  sortCriteria = { comment_count: -1 }; // Sort by watch_time in descending order
+            } else {
+                  sortCriteria = { _id: -1 }; // Default sorting
+            }
+
             // Use Mongoose to fetch paginated reels from the database
             const paginatedReels = await reelQuery
+                  .sort(sortCriteria)
                   .skip(startIndex)
                   .limit(limit)
                   .populate({

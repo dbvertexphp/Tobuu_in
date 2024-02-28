@@ -30,6 +30,47 @@ const Createcategory = asyncHandler(async (req, res) => {
       }
 });
 
+const UpdateCategory = asyncHandler(async (req, res) => {
+      const { category_id, new_category_name } = req.body;
+      const _id = category_id;
+      try {
+            // Check if category_id and new_category_name are provided
+            if (!category_id || !new_category_name) {
+                  return res.status(400).json({
+                        message: "Please provide category ID and new category name.",
+                        status: false,
+                  });
+            }
+
+            // Find the category by ID and update its name
+            const category = await Category.findByIdAndUpdate(
+                  _id,
+                  { category_name: new_category_name },
+                  { new: true } // To return the updated category
+            );
+
+            if (!category) {
+                  return res.status(404).json({
+                        message: "Category not found.",
+                        status: false,
+                  });
+            }
+
+            // Return the updated category
+            res.status(200).json({
+                  category,
+                  message: "Category updated successfully.",
+                  status: true,
+            });
+      } catch (error) {
+            console.error("Error updating category:", error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
 const GetAllCategories = asyncHandler(async (req, res) => {
       try {
             // Fetch all categories from the database
@@ -146,4 +187,5 @@ module.exports = {
       DeleteCategory,
       GetSingleCategoryByName,
       GetAllCategoriesAdmin,
+      UpdateCategory,
 };

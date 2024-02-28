@@ -1314,19 +1314,28 @@ const UserAdminStatus = asyncHandler(async (req, res) => {
             if (!user) {
                   return res.status(404).json({ message: "User not found" });
             }
-
             // Check if deleted_at field is null or has a value
             if (user.deleted_at === null) {
-                  // If deleted_at is null, update it with new Date()
-                  user.deleted_at = new Date();
+                  const updatedUser = await User.findByIdAndUpdate(
+                        userId,
+                        {
+                              $set: {
+                                    deleted_at: new Date(),
+                              },
+                        },
+                        { new: true }
+                  );
             } else {
-                  // If deleted_at has a value, update it with null
-                  user.deleted_at = null;
+                  const updatedUser = await User.findByIdAndUpdate(
+                        userId,
+                        {
+                              $set: {
+                                    deleted_at: null,
+                              },
+                        },
+                        { new: true }
+                  );
             }
-
-            // Save the updated video
-            await user.save();
-
             return res.status(200).json({
                   message: "User soft delete status toggled successfully",
             });
