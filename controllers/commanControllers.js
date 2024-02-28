@@ -251,29 +251,50 @@ const getAllReports = asyncHandler(async (req, res) => {
             for (let report of reports) {
                   if (report.report_type === "video") {
                         // Populate data from Video table
-                        const videoData = await Video.findById(report.type_id);
+                        const videoData = await Video.findById(
+                              report.type_id
+                        ).populate("user_id", "_id username");
                         report.type_id = videoData
-                              ? { _id: videoData._id, title: videoData.title }
+                              ? {
+                                      _id: videoData._id,
+                                      title: videoData.title,
+                                      user_id: {
+                                            _id: videoData.user_id._id,
+                                            username: videoData.user_id
+                                                  .username,
+                                      },
+                                }
                               : null;
                   } else if (report.report_type === "reels") {
                         // Populate data from Reel table
-                        const reelData = await Reel.findById(report.type_id);
+                        const reelData = await Reel.findById(
+                              report.type_id
+                        ).populate("user_id", "_id username");
                         report.type_id = reelData
                               ? {
                                       _id: reelData._id,
                                       title: reelData.title,
                                       share_Id: reelData.share_Id,
+                                      user_id: {
+                                            _id: reelData.user_id._id,
+                                            username: reelData.user_id.username,
+                                      },
                                 }
                               : null;
                   } else if (report.report_type === "timeline") {
-                        // Populate data from Reel table
+                        // Populate data from Timeline table
                         const timelineData = await PostTimeline.findById(
                               report.type_id
-                        );
+                        ).populate("user_id", "_id username");
                         report.type_id = timelineData
                               ? {
                                       _id: timelineData._id,
                                       title: timelineData.title,
+                                      user_id: {
+                                            _id: timelineData.user_id._id,
+                                            username: timelineData.user_id
+                                                  .username,
+                                      },
                                 }
                               : null;
                   }

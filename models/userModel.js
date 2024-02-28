@@ -33,6 +33,7 @@ const userSchema = mongoose.Schema({
             default: "defult_profile/defult_pic.jpg",
       },
       deleted: { type: Boolean, default: false },
+      deleted_at: { type: Date, default: null },
       datetime: {
             type: String,
             default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),

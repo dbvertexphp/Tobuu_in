@@ -249,6 +249,14 @@ const authUser = asyncHandler(async (req, res) => {
             return;
       }
 
+      if (userdata.deleted_at !== null) {
+            res.status(200).json({
+                  message: "Admin has deactivated you please contact admin",
+                  status: false,
+            });
+            return;
+      }
+
       if (userdata.otp_verified === 0) {
             res.status(200).json({
                   message: "OTP Not verified",
@@ -694,10 +702,10 @@ const getBankDetailsAdmin = asyncHandler(async (req, res) => {
 });
 
 const getAllUsers = asyncHandler(async (req, res) => {
-      const { page = 1, search = "" } = req.body;
+      const { page = 1, search = "", Short = "" } = req.body;
       const perPage = 10; // You can adjust this according to your requirements
 
-      // Build the query based on search
+      // Build the query based on search and Short
       const query = search
             ? {
                     $or: [
@@ -708,8 +716,21 @@ const getAllUsers = asyncHandler(async (req, res) => {
               }
             : {};
 
+      // Sorting based on Short field
+      let sortCriteria = {};
+      if (Short === "Review") {
+            sortCriteria = { review: -1 }; // Sort by review in descending order
+      } else if (Short === "watch_time") {
+            sortCriteria = { watch_time: -1 }; // Sort by watch_time in descending order
+      } else if (Short === "Subscribe") {
+            sortCriteria = { subscribe: -1 }; // Sort by subscribe in descending order
+      } else {
+            sortCriteria = { _id: -1 }; // Default sorting
+      }
+
       try {
             const users = await User.find(query)
+                  .sort(sortCriteria)
                   .skip((page - 1) * perPage)
                   .limit(perPage);
 
@@ -1284,6 +1305,36 @@ const getNotificationId = asyncHandler(async (req, res) => {
             res.status(500).json({ error: "Internal Server Error" });
       }
 });
+const UserAdminStatus = asyncHandler(async (req, res) => {
+      const userId = req.body.userId;
+      try {
+            // Find the video by its _id
+            const user = await User.findById(userId);
+
+            if (!user) {
+                  return res.status(404).json({ message: "User not found" });
+            }
+
+            // Check if deleted_at field is null or has a value
+            if (user.deleted_at === null) {
+                  // If deleted_at is null, update it with new Date()
+                  user.deleted_at = new Date();
+            } else {
+                  // If deleted_at has a value, update it with null
+                  user.deleted_at = null;
+            }
+
+            // Save the updated video
+            await user.save();
+
+            return res.status(200).json({
+                  message: "User soft delete status toggled successfully",
+            });
+      } catch (error) {
+            console.error(error);
+            return res.status(500).json({ message: "Internal Server Error" });
+      }
+});
 
 const getUnreadCount = async (req, res) => {
       try {
@@ -1484,4 +1535,5 @@ module.exports = {
       searchUsers,
       getAllUsersWebsite,
       updateUserWatchTime,
+      UserAdminStatus,
 };

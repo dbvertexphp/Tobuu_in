@@ -30,6 +30,7 @@ const {
       getAllUsersWebsite,
       getBankDetailsAdmin,
       updateUserWatchTime,
+      UserAdminStatus,
 } = require("../controllers/userControllers.js");
 const {
       CreateCalendar,
@@ -69,6 +70,7 @@ userRoutes.route("/updateUserProfile").put(protect, updateProfileData);
 userRoutes.route("/ChangePassword").put(protect, ChangePassword);
 userRoutes.route("/profilePicUpload").put(protect, profilePicUpload);
 userRoutes.route("/bankdetailsUpload").post(protect, bank_Detail_create);
+userRoutes.route("/UserAdminStatus").post(protect, UserAdminStatus);
 userRoutes.route("/getBankDetails").get(protect, getBankDetails);
 userRoutes.route("/getBankDetailsAdmin").post(protect, getBankDetailsAdmin);
 userRoutes.route("/addReview").post(protect, addReview);
