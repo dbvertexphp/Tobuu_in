@@ -92,8 +92,6 @@ const getPaginatedReel = asyncHandler(async (req, res) => {
       const startIndex = (page - 1) * limit;
 
       try {
-            // Use Mongoose to fetch paginated Reels from the database
-
             let reeldQuery = Reel.find({ deleted_at: null });
 
             if (req.body.category_id) {
@@ -108,19 +106,47 @@ const getPaginatedReel = asyncHandler(async (req, res) => {
                   });
             }
 
+            let totalReels;
+
+            const category_id = req.body.category_id;
+            const search = req.body.search;
+
+            if (category_id) {
+                  reeldQuery = reeldQuery
+                        .where("category_id")
+                        .equals(category_id);
+                  totalReels = await Reel.countDocuments({
+                        category_id,
+                        deleted_at: null,
+                  });
+            } else if (search) {
+                  reeldQuery = reeldQuery.where(
+                        "title",
+                        new RegExp(search, "i")
+                  );
+                  totalReels = await Reel.countDocuments({
+                        title: search,
+                        deleted_at: null,
+                  });
+            } else {
+                  totalReels = await Reel.countDocuments({
+                        deleted_at: null,
+                  });
+            }
+
             const paginatedReels = await reeldQuery
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
                         path: "user_id",
-                        select: "first_name last_name pic", // Adjust these fields based on your User schema
+                        select: "first_name last_name pic",
                   })
                   .populate({
                         path: "category_id",
-                        select: "category_name", // Adjust this field based on your Category schema
-                  });
+                        select: "category_name",
+                  })
+                  .exec();
 
-            const totalReels = await Reel.countDocuments();
             const hasMore = startIndex + paginatedReels.length < totalReels;
 
             if (paginatedReels.length === 0) {
@@ -131,59 +157,51 @@ const getPaginatedReel = asyncHandler(async (req, res) => {
                   });
             }
 
-            // Transform and exclude specific fields in the response
             const transformedReels = [];
-
             const token = req.header("Authorization");
 
             for (const reel of paginatedReels) {
-                  const { reel_name, updatedAt, __v, ...response } = reel._doc;
-
                   let like_status = "No";
                   let subscribe_status = "No";
                   let like_count = 0;
 
-                  // Get the like count for each reel
                   const reelLikeCount = await ReelLike.find({
                         reel_id: reel._id,
                   });
 
                   for (const reelLikeCountUpdate of reelLikeCount) {
-                        like_count = reelLikeCountUpdate.count; // Fix the assignment here, use '=' instead of ':'
+                        like_count += reelLikeCountUpdate.count;
                   }
+
                   const pic_name_url = await getSignedUrlS3(reel.user_id.pic);
-                  // Add the base URL to the user's profile picture
                   const updatedUser = {
                         ...reel.user_id._doc,
                         pic: pic_name_url,
                   };
 
-                  if (token) {
-                        // Check if the user has liked the current reel
+                  if (token && req.user) {
                         const isLiked = await ReelLike.exists({
                               reel_id: reel._id,
                               user_ids: req.user._id,
                         });
 
-                        // Set like_status based on whether the user has liked the reel
                         like_status = isLiked ? "Yes" : "No";
 
-                        // Check if the user has subscribed to the author
                         const isSubscribed = await Subscribes.exists({
                               my_id: reel.user_id._id,
                               subscriber_id: req.user._id,
                         });
 
-                        // Set subscribe_status based on whether the user has subscribed to the author
                         subscribe_status = isSubscribed ? "Yes" : "No";
                   }
+
                   const thumbnail_name_url = await getSignedUrlS3(
                         reel.thumbnail_name
                   );
                   const video_name_url = await getSignedUrlS3(reel.reel_name);
 
                   transformedReels.push({
-                        ...response,
+                        ...reel._doc,
                         reel_url: video_name_url,
                         thumbnail_name: thumbnail_name_url,
                         user_id: updatedUser,
