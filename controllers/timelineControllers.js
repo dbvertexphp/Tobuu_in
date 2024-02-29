@@ -395,7 +395,7 @@ const addTimelineComment = asyncHandler(async (req, res) => {
             // Create a new TimelineComment
             const newComment = new TimelineComment({
                   user_id: mongoose.Types.ObjectId(user_id),
-                  timeline_id: objectIdTimelineId,
+                  timeline_id: timeline_id,
                   comment,
             });
 
@@ -406,8 +406,7 @@ const addTimelineComment = asyncHandler(async (req, res) => {
             await PostTimeline.findByIdAndUpdate(
                   objectIdTimelineId,
                   { $inc: { comment_count: 1 } }, // Increment comment_count by 1
-                  { new: true }, // Return the updated document
-                  { deleted_at: null }
+                  { new: true, deleted_at: null } // Options object for findByIdAndUpdate
             );
 
             res.status(201).json({

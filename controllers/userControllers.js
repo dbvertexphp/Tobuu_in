@@ -1083,9 +1083,10 @@ const getReview = asyncHandler(async (req, res) => {
             const user_id = req.params.id;
             const page = req.query.page || 1;
             const pageSize = 10;
+            console.log(user_id);
 
             const notifications = await Review.find({
-                  my_id: user_id,
+                  review_id: user_id,
             })
                   .sort({ datetime: -1 })
                   .skip((page - 1) * pageSize)
@@ -1100,7 +1101,7 @@ const getReview = asyncHandler(async (req, res) => {
             const notificationList = await Promise.all(
                   notifications.map(async (notification) => {
                         const senderDetails = await User.findById(
-                              notification.review_id
+                              notification.my_id
                         );
 
                         const sender = {
@@ -1114,6 +1115,7 @@ const getReview = asyncHandler(async (req, res) => {
                               _id: notification._id,
                               sender,
                               message: notification.message,
+                              review_number: notification.review_number,
                               description: notification.description,
                               type: notification.type,
                               time: calculateTimeDifference(

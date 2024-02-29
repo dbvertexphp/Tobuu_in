@@ -58,7 +58,7 @@ const timelineCommentSchema = mongoose.Schema({
       user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       timeline_id: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Timeline",
+            ref: "PostTimeline",
       },
       comment: { type: String, required: true },
       datetime: {
