@@ -1241,6 +1241,64 @@ const ViewCountAdd = asyncHandler(async (req, res) => {
       }
 });
 
+const getVideoThumbnailsHome = asyncHandler(async (category_id) => {
+      try {
+            const limit = parseInt(5);
+
+            const query = category_id ? { category_id } : {};
+            const videos = await Video.find({ ...query, deleted_at: null })
+                  .limit(limit)
+                  .select("thumbnail_name video_name title");
+
+            if (!videos || videos.length === 0) {
+                  return {
+                        data: [],
+                        status: false,
+                        message: "Videos not found.",
+                  };
+            }
+
+            const videoData = await Promise.all(
+                  videos.map(async (thumbnail) => {
+                        if (
+                              !thumbnail.thumbnail_name ||
+                              !thumbnail.video_name
+                        ) {
+                              return null;
+                        }
+
+                        const thumbnail_name_url = await getSignedUrlS3(
+                              thumbnail.thumbnail_name
+                        );
+                        const video_name_url = await getSignedUrlS3(
+                              thumbnail.video_name
+                        );
+
+                        return {
+                              id: thumbnail._id,
+                              title: thumbnail.title,
+                              thumbnail_url: thumbnail_name_url,
+                              video_url: video_name_url,
+                        };
+                  })
+            );
+
+            const validVideoData = videoData.filter((data) => data !== null);
+
+            return {
+                  data: validVideoData,
+                  status: true,
+                  message: "Videos fetched successfully.",
+            };
+      } catch (error) {
+            console.error("Error fetching videos:", error);
+            return {
+                  data: [],
+                  status: false,
+                  message: "Internal Server Error.",
+            };
+      }
+});
 module.exports = {
       uploadVideo,
       getPaginatedVideos,
@@ -1259,4 +1317,5 @@ module.exports = {
       getPaginatedVideosAdmin,
       VideoAdminStatus,
       ViewCountAdd,
+      getVideoThumbnailsHome,
 };

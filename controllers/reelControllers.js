@@ -865,7 +865,7 @@ const getMyReels = asyncHandler(async (req, res) => {
 
 const getPaginatedReelWebsite = asyncHandler(async (req, res) => {
       const page = parseInt(req.params.page) || 1;
-      const limit = parseInt(req.query.limit) || 1;
+      const limit = parseInt(req.query.limit) || 5;
       const startIndex = (page - 1) * limit;
 
       try {
@@ -989,7 +989,7 @@ const getPaginatedReelWebsite = asyncHandler(async (req, res) => {
 const getMyReelsWebsite = asyncHandler(async (req, res) => {
       const user_id = req.user._id; // Assuming you have user authentication middleware
       const page = parseInt(req.params.page) || 1;
-      const limit = parseInt(req.query.limit) || 1;
+      const limit = parseInt(req.query.limit) || 100;
       const startIndex = (page - 1) * limit;
 
       try {
@@ -1308,7 +1308,7 @@ const getUserReels = asyncHandler(async (req, res) => {
 
 const getUserReelsWebsite = asyncHandler(async (req, res) => {
       const { user_id, page } = req.body;
-      const limit = parseInt(req.query.limit) || 1;
+      const limit = parseInt(req.query.limit) || 100;
       const startIndex = (page - 1) * limit;
       try {
             const reels = await Reel.find({ user_id, deleted_at: null })
@@ -1740,6 +1740,64 @@ const ReelsAdminStatus = asyncHandler(async (req, res) => {
       }
 });
 
+const getReelThumbnailsHome = asyncHandler(async (category_id) => {
+      try {
+            const limit = parseInt(5);
+
+            // Construct the query based on whether category_id is provided or not
+            const query = category_id ? { category_id } : {};
+
+            // Include the condition for deleted_at: null
+            query.deleted_at = null;
+
+            // Fetch thumbnails based on the limit and category_id (if provided)
+            const thumbnails = await Reel.find(query)
+                  .limit(limit)
+                  .select("thumbnail_name title reel_name")
+                  .exec();
+
+            if (!thumbnails || thumbnails.length === 0) {
+                  return {
+                        data: [],
+                        status: false,
+                        message: "No Reel Found.",
+                  };
+            }
+
+            // Construct full URLs for thumbnails
+            const thumbnailData = await Promise.all(
+                  thumbnails.map(async (thumbnail) => {
+                        const thumbnail_name_url = await getSignedUrlS3(
+                              thumbnail.thumbnail_name
+                        );
+                        const video_name_url = await getSignedUrlS3(
+                              thumbnail.reel_name
+                        );
+
+                        return {
+                              id: thumbnail._id,
+                              title: thumbnail.title,
+                              thumbnail_url: thumbnail_name_url,
+                              reel_url: video_name_url,
+                        };
+                  })
+            );
+
+            return {
+                  data: thumbnailData,
+                  status: true,
+                  message: "Thumbnails fetched successfully.",
+            };
+      } catch (error) {
+            console.error("Error fetching thumbnails:", error);
+            return {
+                  data: [],
+                  status: false,
+                  message: "Internal Server Error.",
+            };
+      }
+});
+
 module.exports = {
       uploadReel,
       getPaginatedReel,
@@ -1763,4 +1821,5 @@ module.exports = {
       getPaginatedReelsAdmin,
       ReelsAdminStatus,
       getPaginatedReelWebsite,
+      getReelThumbnailsHome,
 };

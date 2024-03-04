@@ -1035,6 +1035,97 @@ const ViewCountAdd = asyncHandler(async (req, res) => {
       }
 });
 
+const getPaginatedTimelineHome = asyncHandler(async (category_id) => {
+      const page = 1; // Default page value
+      const limit = 5; // Default limit value
+      const startIndex = (page - 1) * limit;
+
+      try {
+            // Construct the query based on category_id and deleted_at: null
+            const query = {
+                  deleted_at: null, // Include only posts where deleted_at is null
+            };
+
+            if (category_id) {
+                  query.category_id = category_id; // Filter by category_id if provided
+            }
+
+            // Fetch paginated Timelines from the database based on the constructed query
+            const paginatedTimelines = await PostTimeline.find(query)
+                  .skip(startIndex)
+                  .limit(limit)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic",
+                  })
+                  .populate({
+                        path: "category_id",
+                        select: "category_name",
+                  });
+
+            // Calculate totalTimelines with the applied filters
+            const totalTimelines = await PostTimeline.countDocuments(query);
+
+            const hasMore =
+                  startIndex + paginatedTimelines.length < totalTimelines;
+
+            if (paginatedTimelines.length === 0) {
+                  return {
+                        message: "Timeline Post Not Found",
+                        status: true,
+                  };
+            }
+
+            // Iterate through timelines to get like counts and add additional fields
+            const timelinesWithAdditionalInfo = await Promise.all(
+                  paginatedTimelines.map(async (timeline) => {
+                        let like_count = 0;
+
+                        // Fetch like count for the timeline
+                        const likeCount = await getTimelineLikeCount(
+                              timeline._id
+                        );
+                        const timelineLikeCount = await PostTimelineLike.find({
+                              post_timeline_id: timeline._id,
+                        });
+                        for (const timelineLikeCountUpdate of timelineLikeCount) {
+                              like_count = timelineLikeCountUpdate.count;
+                        }
+
+                        const pic_name_url = await getSignedUrlS3(
+                              timeline.user_id.pic
+                        );
+                        const updatedUser = timeline.user_id
+                              ? {
+                                      ...timeline.user_id._doc,
+                                      pic: pic_name_url,
+                                }
+                              : null;
+
+                        return {
+                              ...timeline._doc,
+                              user_id: updatedUser,
+                              like_count,
+                        };
+                  })
+            );
+
+            return {
+                  page,
+                  limit,
+                  data: timelinesWithAdditionalInfo,
+                  hasMore,
+                  status: true,
+            };
+      } catch (error) {
+            return {
+                  message: "Internal Server Error",
+                  error: error.message,
+                  status: false,
+            };
+      }
+});
+
 module.exports = {
       uploadPostTimeline,
       getPaginatedTimeline,
@@ -1051,4 +1142,5 @@ module.exports = {
       getPaginatedPostTimelinesAdmin,
       TimelineAdminStatus,
       ViewCountAdd,
+      getPaginatedTimelineHome,
 };

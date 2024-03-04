@@ -2,6 +2,10 @@ const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const asyncHandler = require("express-async-handler");
 const { Video, VideoLike, VideoComment } = require("../models/videoModel.js");
+const { getVideoThumbnailsHome } = require("./videoControllers.js");
+const { getReelThumbnailsHome } = require("./reelControllers.js");
+const { getPaginatedJobHome } = require("./jobControllers.js");
+const { getPaginatedTimelineHome } = require("./timelineControllers.js");
 const {
       companyDetailsModel,
       Report,
@@ -330,11 +334,32 @@ const getAllReports = asyncHandler(async (req, res) => {
             });
       }
 });
-
+const HomePage = asyncHandler(async (req, res) => {
+      const category_id = req.body.category_id;
+      try {
+            const videoList = await getVideoThumbnailsHome(category_id);
+            const ReelsList = await getReelThumbnailsHome(category_id);
+            const JobList = await getPaginatedJobHome(category_id);
+            const TimelineList = await getPaginatedTimelineHome(category_id);
+            res.status(200).json({
+                  videoList: videoList,
+                  reelsList: ReelsList,
+                  jobList: JobList,
+                  timelineList: TimelineList,
+            });
+      } catch (error) {
+            console.error("Error in HomePage:", error);
+            res.status(500).json({
+                  message: "Internal Server Error.",
+                  status: false,
+            });
+      }
+});
 module.exports = {
       Checklikestatus,
       contactUs,
       report,
       getAllContact,
       getAllReports,
+      HomePage,
 };

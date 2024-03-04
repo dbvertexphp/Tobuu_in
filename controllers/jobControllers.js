@@ -776,6 +776,84 @@ const JobAdminStatus = asyncHandler(async (req, res) => {
       }
 });
 
+const getPaginatedJobHome = asyncHandler(async (category_id) => {
+      const page = 1; // Default page value
+      const limit = 5; // Default limit value
+      const startIndex = (page - 1) * limit;
+
+      try {
+            let jobQuery = PostJob.find({ deleted_at: null })
+                  .sort({ _id: -1 })
+                  .skip(startIndex)
+                  .limit(limit)
+                  .populate({
+                        path: "category_id",
+                        select: "category_name",
+                  })
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic",
+                  });
+
+            let totalJobs;
+
+            if (category_id) {
+                  jobQuery = jobQuery.where("category_id").equals(category_id);
+                  totalJobs = await PostJob.countDocuments({
+                        category_id,
+                        deleted_at: null,
+                  });
+            } else {
+                  totalJobs = await PostJob.countDocuments({
+                        deleted_at: null,
+                  });
+            }
+
+            const paginatedJobs = await jobQuery.exec();
+
+            const hasMore = startIndex + paginatedJobs.length < totalJobs;
+
+            if (paginatedJobs.length === 0) {
+                  return {
+                        message: "Job Not Found",
+                        status: true,
+                  };
+            }
+
+            const jobsWithAdditionalInfo = await Promise.all(
+                  paginatedJobs.map(async (job) => {
+                        // Apply status is removed since there is no request object
+                        const pic_name_url = await getSignedUrlS3(
+                              job.user_id.pic
+                        );
+                        const updatedUser = job.user_id
+                              ? { ...job.user_id._doc, pic: pic_name_url }
+                              : null;
+
+                        return {
+                              ...job._doc,
+                              user_id: updatedUser,
+                        };
+                  })
+            );
+
+            return {
+                  page,
+                  limit,
+                  status: true,
+                  data: jobsWithAdditionalInfo,
+                  hasMore,
+            };
+      } catch (error) {
+            return {
+                  message: "Internal Server Error",
+                  error: error.message,
+                  status: false,
+            };
+      }
+});
+
+
 module.exports = {
       uploadPostJob,
       getPaginatedJob,
@@ -789,4 +867,5 @@ module.exports = {
       searchJobPosts,
       getPaginatedPostJobsAdmin,
       JobAdminStatus,
+      getPaginatedJobHome
 };
