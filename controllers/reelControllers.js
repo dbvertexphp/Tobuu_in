@@ -1546,7 +1546,7 @@ const getReelsUploadUrlS3 = asyncHandler(async (req, res) => {
             randomFilenameThumbnail
       );
 
-      return res.status(400).json({
+      return res.status(200).json({
             message: { videoget_url, thumbnailget_url },
             status: false,
       });

@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const cookie = require("cookie");
 const axios = require("axios");
+const bcrypt = require("bcryptjs");
 const moment = require("moment-timezone");
 const { generateToken, blacklistToken } = require("../config/generateToken.js");
 const {
@@ -18,7 +19,6 @@ const Review = require("../models/reviewModel.js");
 const BankDetails = require("../models/bankdetailsModel.js");
 const Transaction = require("../models/transactionModel");
 const multer = require("multer");
-const bcrypt = require("bcryptjs");
 const MyFriends = require("../models/myfrindsModel.js");
 const { Hire, HireStatus } = require("../models/hireModel.js");
 require("dotenv").config();
@@ -415,6 +415,15 @@ const resendOTP = asyncHandler(async (req, res) => {
 const ForgetresendOTP = asyncHandler(async (req, res) => {
       const { mobile } = req.body;
 
+      const userdata = await User.findOne({ mobile: mobile });
+
+      if (!userdata) {
+            res.status(200).json({
+                  message: "Mobile Number Not Found",
+                  status: false,
+            });
+            return;
+      }
       // Generate a new OTP
       const newOTP = generateOTP();
 
@@ -431,10 +440,10 @@ const ForgetresendOTP = asyncHandler(async (req, res) => {
             return;
       }
 
-      // Update the user's otp field with the new OTP
-      user.otp = newOTP;
-      //user.otp_verified = 0; // Reset otp_verified status
-      await user.save();
+      const result = await User.updateOne(
+            { _id: user._id },
+            { $set: { otp: newOTP } }
+      );
 
       // Send the new OTP to the user (you can implement this logic)
 
@@ -588,9 +597,15 @@ const forgetPassword = asyncHandler(async (req, res) => {
 
       user.password = newPassword;
 
-      // Save the updated user with the new password
-      await user.save();
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
 
+      const result = await User.updateOne(
+            { _id: user._id },
+            { $set: { password: hashedPassword } }
+      );
+
+      // Save the updated user with the new password
       res.json({
             message: "Password reset successfully.",
             status: true,

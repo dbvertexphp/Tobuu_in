@@ -89,6 +89,7 @@ const getPaginatedTimeline = asyncHandler(async (req, res) => {
             // Fetch paginated Timelines from the database based on the constructed query
             const paginatedTimelines = await PostTimeline.find(query)
                   .skip(startIndex)
+                  .sort({ _id: -1 })
                   .limit(limit)
                   .populate({
                         path: "user_id",
@@ -650,6 +651,7 @@ const getMyTimeline = asyncHandler(async (req, res) => {
                   user_id,
                   deleted_at: null,
             })
+                  .sort({ _id: -1 })
                   .populate({
                         path: "user_id",
                         select: "first_name last_name pic",

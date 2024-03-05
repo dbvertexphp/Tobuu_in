@@ -465,6 +465,7 @@ const getMyJobs = asyncHandler(async (req, res) => {
                         path: "category_id",
                         select: "category_name",
                   })
+                  .sort({ _id: -1 })
                   .skip(startIndex)
                   .limit(limit);
 
@@ -853,7 +854,6 @@ const getPaginatedJobHome = asyncHandler(async (category_id) => {
       }
 });
 
-
 module.exports = {
       uploadPostJob,
       getPaginatedJob,
@@ -867,5 +867,5 @@ module.exports = {
       searchJobPosts,
       getPaginatedPostJobsAdmin,
       JobAdminStatus,
-      getPaginatedJobHome
+      getPaginatedJobHome,
 };
