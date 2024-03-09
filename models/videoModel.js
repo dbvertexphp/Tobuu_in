@@ -4,7 +4,7 @@ const moment = require("moment-timezone");
 const videoSchema = mongoose.Schema({
       video_name: { type: String, trim: true, required: true },
       title: { type: String },
-      thumbnail_name: { type: String, trim: true, required: true },
+      thumbnail_name: { type: String, trim: true, default:"Video_defult/video_defult_thumbunil.jpg"},
       user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       category_id: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
       comment_count: { type: Number, default: 0 },

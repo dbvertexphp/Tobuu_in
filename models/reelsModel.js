@@ -7,7 +7,7 @@ const reelSchema = mongoose.Schema({
       share_Id: { type: Number, required: true, unique: true },
       reel_name: { type: String, trim: true, required: true },
       title: { type: String },
-      thumbnail_name: { type: String, trim: true, required: true },
+      thumbnail_name: { type: String, trim: true, default:"Reels_defult/reel_defult_thumbunil.jpg"},
       user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       category_id: {
             type: mongoose.Schema.Types.ObjectId,

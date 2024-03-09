@@ -97,9 +97,15 @@ const GetAllCategories = asyncHandler(async (req, res) => {
                   : categories;
 
             // Sort the remaining categories alphabetically
-            const sortedCategories = categoriesWithoutAll.sort((a, b) =>
-                  a.category_name.localeCompare(b.category_name)
-            );
+            const sortedCategories = categoriesWithoutAll.sort((a, b) => {
+                  if (a.category_name.toLowerCase() === "other") {
+                        return 1; // Move "Other" to the end
+                  } else if (b.category_name.toLowerCase() === "other") {
+                        return -1; // Keep "Other" at the end
+                  } else {
+                        return a.category_name.localeCompare(b.category_name);
+                  }
+            });
 
             // If "All" category exists, add it to the beginning of the sorted array
             const finalCategories = allCategory
@@ -138,8 +144,24 @@ const DeleteCategory = asyncHandler(async (req, res) => {
 const GetAllCategoriesAdmin = asyncHandler(async (req, res) => {
       try {
             // Fetch all categories from the database
-            const categories = await Category.find().sort({ category_name: 1 });
-
+            const categories = await Category.aggregate([
+                  {
+                        $project: {
+                              category_name: 1,
+                              createdAt: 1,
+                              updatedAt: 1,
+                              datetime: 1,
+                              isOther: {
+                                    $cond: [
+                                          { $eq: ["$category_name", "Other"] },
+                                          1,
+                                          0,
+                                    ],
+                              },
+                        },
+                  },
+                  { $sort: { isOther: 1, category_name: 1 } },
+            ]);
             if (!categories || categories.length === 0) {
                   return res.status(404).json({
                         message: "No categories found.",
@@ -147,10 +169,15 @@ const GetAllCategoriesAdmin = asyncHandler(async (req, res) => {
                   });
             }
 
+            // Map categories to remove the 'isOther' property
+            const sanitizedCategories = categories.map((category) => {
+                  const { isOther, ...rest } = category;
+                  return rest;
+            });
+
             // Filter out the "All" category from the categories array
-            const filteredCategories = categories.filter(
-                  (category) =>
-                        category._id.toString() !== "65af9a14e94ee43b04eef868" // Replace this ID with the actual ID of "All" category
+            const filteredCategories = sanitizedCategories.filter(
+                  (category) => category.category_name !== "All" // Replace this ID with the actual ID of "All" category
             );
 
             res.status(200).json(filteredCategories);

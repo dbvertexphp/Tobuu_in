@@ -16,8 +16,6 @@ const accessChat = asyncHandler(async (req, res) => {
             console.log("UserId param not sent with request");
             return res.sendStatus(400);
       }
-
-      // Check if a chat exists with the given users
       const isChat = await Chat.find({
             isGroupChat: false,
             $and: [
@@ -25,31 +23,26 @@ const accessChat = asyncHandler(async (req, res) => {
                   { users: { $elemMatch: { $eq: userId } } },
             ],
       })
+            .sort({ updatedAt: -1 }) // ascending order mein sort kiya gaya hai
             .populate("users", "-password")
             .populate("latestMessage");
 
-      // Populate the latestMessage sender field
       const populatedChat = await User.populate(isChat, {
             path: "latestMessage.sender",
             select: "pic first_name last_name",
       });
 
       if (populatedChat.length > 0 && populatedChat[0] !== null) {
-            // If the chat exists, send it as a response
             const chatWithBaseUrl = {
                   ...populatedChat[0].toObject(),
                   status: true,
             };
-
-            // Add BASE_URL to the pic field if it exists
             if (chatWithBaseUrl.pic) {
                   const pic_name_url = await getSignedUrlS3(
                         chatWithBaseUrl.pic
                   );
                   chatWithBaseUrl.pic = pic_name_url;
             }
-
-            // Add BASE_URL to the pic field for each user in the users array
             if (chatWithBaseUrl.users && chatWithBaseUrl.users.length > 0) {
                   for (let user of chatWithBaseUrl.users) {
                         if (user.pic) {
@@ -60,7 +53,6 @@ const accessChat = asyncHandler(async (req, res) => {
                         }
                   }
             }
-
             res.send(chatWithBaseUrl);
       } else {
             // If the chat doesn't exist, create a new chat
@@ -111,11 +103,12 @@ const accessChat = asyncHandler(async (req, res) => {
 const fetchChats = asyncHandler(async (req, res) => {
       try {
             const page = req.query.page || 1;
-            const pageSize = 5;
+            const pageSize = 1000;
             const skip = (page - 1) * pageSize;
 
             const results = await Chat.find({
                   users: { $elemMatch: { $eq: req.user._id } },
+                  latestMessage: { $ne: null }, // Filter for non-null latestMessage
             })
                   .populate({
                         path: "users",
@@ -124,7 +117,7 @@ const fetchChats = asyncHandler(async (req, res) => {
                   .populate({
                         path: "latestMessage",
                   })
-                  .sort({ updatedAt: -1 })
+                  .sort({ updatedAt: -1, "latestMessage.datetime": -1 })
                   .skip(skip)
                   .limit(pageSize);
 
@@ -167,7 +160,6 @@ const fetchChats = asyncHandler(async (req, res) => {
 
             // Null values ko filter karein
             const filteredChatList = chatListWithBaseUrl.filter(Boolean);
-
             return res.status(200).json({
                   chat_list: filteredChatList,
                   status: true,

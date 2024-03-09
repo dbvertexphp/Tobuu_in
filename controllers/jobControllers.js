@@ -4,6 +4,7 @@ const { AdminDashboard } = require("../models/userModel.js");
 require("dotenv").config();
 const baseURL = process.env.BASE_URL;
 const { getSignedUrlS3 } = require("../config/aws-s3.js");
+const { createNotification } = require("./notificationControllers.js");
 
 const uploadPostJob = asyncHandler(async (req, res) => {
       const user_id = req.user._id; // Assuming you have user authentication middleware
@@ -89,7 +90,12 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
                   });
             }
 
-            const paginatedJobs = await jobQuery.exec();
+            const filteredJobs = await jobQuery.exec();
+
+            const paginatedJobs = filteredJobs.filter(
+                  (job) =>
+                        job.user_id._id.toString() !== req.user._id.toString()
+            );
 
             const hasMore = startIndex + paginatedJobs.length < totalJobs;
 
@@ -298,7 +304,27 @@ const appliedPostJob = asyncHandler(async (req, res) => {
                         job_id,
                         category_id: jobData.category_id,
                   });
+
+                  const jobreceiver_id = await PostJob.findOne({
+                        _id: job_id,
+                  });
+
                   await newApplication.save();
+
+                  const receiver_id = jobreceiver_id.user_id;
+                  const Jobtitle = jobreceiver_id.title;
+                  const JobMetadata_id = {
+                        Job_id: jobreceiver_id._id, // Assuming JobMetadata_id contains the Job_id
+                  };
+                  const message = `has applied for job ${Jobtitle}`;
+                  const type = "Applied_Job";
+                  createNotification(
+                        user_id,
+                        receiver_id,
+                        message,
+                        type,
+                        JobMetadata_id
+                  );
 
                   return res.json({
                         message: "New job application created.",
@@ -367,6 +393,7 @@ const getAppliedJobs = asyncHandler(async (req, res) => {
                                                 last_name:
                                                       job_id.user_id.last_name,
                                                 pic: pic_name_url,
+                                                _id: job_id.user_id._id,
                                           },
                                           description: job_id.description,
                                           title: job_id.title,

@@ -1235,12 +1235,12 @@ const NotificationList = asyncHandler(async (req, res) => {
       try {
             const user_id = req.user._id;
             const page = req.query.page || 1;
-            const pageSize = 10;
+            const pageSize = 500;
 
             const notifications = await NotificationMessages.find({
                   receiver_id: user_id,
             })
-                  .sort({ datetime: -1 })
+                  .sort({ datetime: 1 })
                   .skip((page - 1) * pageSize)
                   .limit(pageSize);
 
@@ -1277,6 +1277,7 @@ const NotificationList = asyncHandler(async (req, res) => {
                               _id: notification._id,
                               sender,
                               message: notification.message,
+                              metadata: notification.metadata,
                               type: notification.type,
                               time: calculateTimeDifference(
                                     notification.datetime

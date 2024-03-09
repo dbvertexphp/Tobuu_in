@@ -24,7 +24,13 @@ const sendFCMNotification = (registrationToken, title, body, imageUrl) => {
       return admin.messaging().send(message);
 };
 
-const createNotification = async (sender_id, receiver_id, message, type) => {
+const createNotification = async (
+      sender_id,
+      receiver_id,
+      message,
+      type,
+      data = null
+) => {
       try {
             // Find the receiver's FCM token from the websiteNotificationTokens table
             const websiteToken = await WebNotification.findOne({
@@ -75,6 +81,7 @@ const createNotification = async (sender_id, receiver_id, message, type) => {
                   receiver_id,
                   message,
                   type,
+                  metadata: data,
             });
 
             //console.log("Notification sent and saved:", newNotification);

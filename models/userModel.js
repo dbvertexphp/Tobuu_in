@@ -85,6 +85,7 @@ const NotificationMessage = mongoose.Schema({
             type: String,
             default: moments().format("DD-MM-YYYY HH:mm:ss"),
       },
+      metadata: { type: Object, default: null },
 });
 
 userSchema.pre("save", async function (next) {
