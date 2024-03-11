@@ -4,7 +4,7 @@ const {
       getMyFriends,
       AcceptFriendRequest,
       getMyFriendsrequests,
-      getMyFriendsAdd
+      getMyFriendsAdd,
 } = require("../controllers/myfrindsController.js");
 const protect = require("../middleware/authMiddleware.js");
 
@@ -12,8 +12,10 @@ const myfriendRoutes = express.Router();
 
 myfriendRoutes.route("/Sendfriendrequest").post(protect, SendFriendRequest);
 myfriendRoutes.route("/AcceptFriendRequest").post(protect, AcceptFriendRequest);
-myfriendRoutes.route("/").get(protect, getMyFriends);
-myfriendRoutes.route("/getMyFriendsAdd").get(protect, getMyFriendsAdd);
-myfriendRoutes.route("/getMyFriendsrequests").get(protect, getMyFriendsrequests);
+myfriendRoutes.route("/").post(protect, getMyFriends);
+myfriendRoutes.route("/getMyFriendsAdd").post(protect, getMyFriendsAdd);
+myfriendRoutes
+      .route("/getMyFriendsrequests")
+      .post(protect, getMyFriendsrequests);
 
 module.exports = { myfriendRoutes };

@@ -168,12 +168,16 @@ const AcceptFriendRequest = asyncHandler(async (req, res) => {
 const getMyFriends = asyncHandler(async (req, res) => {
       try {
             const user_id = req.user._id;
+            const searchText = req.body.search
+                  ? req.body.search.toLowerCase()
+                  : ""; // Convert searchText to lowercase
+
             // Find the MyFriends document for the user
             const myFriends = await MyFriends.findOne({
                   my_id: user_id,
             }).populate({
                   path: "friends_id",
-                  select: "first_name last_name pic _id",
+                  select: "first_name last_name pic _id username",
             });
 
             if (!myFriends) {
@@ -183,8 +187,23 @@ const getMyFriends = asyncHandler(async (req, res) => {
                   });
             }
 
-            const friends = await Promise.all(
-                  myFriends.friends_id.map(async (friend) => {
+            let friends = myFriends.friends_id;
+
+            // Filter friends based on search text if available
+            if (searchText) {
+                  friends = friends.filter(
+                        (friend) =>
+                              (friend.first_name &&
+                                    friend.username &&
+                                    friend.first_name
+                                          .toLowerCase()
+                                          .includes(searchText)) ||
+                              friend.username.toLowerCase().includes(searchText)
+                  );
+            }
+
+            const friendsList = await Promise.all(
+                  friends.map(async (friend) => {
                         const pic = await getSignedUrlS3(`${friend.pic}`); // Assuming pic is the path to the image
                         return {
                               first_name: friend.first_name,
@@ -195,7 +214,7 @@ const getMyFriends = asyncHandler(async (req, res) => {
                   })
             );
 
-            if (friends.length === 0) {
+            if (friendsList.length === 0) {
                   return res.status(200).json({
                         status: false,
                         message: "No Friend Found",
@@ -206,7 +225,7 @@ const getMyFriends = asyncHandler(async (req, res) => {
             // Send the list of friends in the response
             res.status(200).json({
                   status: true,
-                  friends: friends,
+                  friends: friendsList,
             });
       } catch (error) {
             console.error("Error getting friends:", error);
@@ -220,14 +239,12 @@ const getMyFriends = asyncHandler(async (req, res) => {
 const getMyFriendsAdd = asyncHandler(async (req, res) => {
       try {
             const user_id = req.user._id;
+            const searchText = req.body.search
+                  ? req.body.search.toLowerCase()
+                  : ""; // Convert searchText to lowercase
 
-            // Find MyFriends documents where the user's id is in friends_id array
-            const myFriends = await MyFriends.find({
-                  friends_id: user_id,
-            }).populate({
-                  path: "my_id",
-                  select: "first_name last_name pic _id",
-            });
+            // User ka ID find kare
+            const myFriends = await MyFriends.find({ friends_id: user_id });
 
             if (!myFriends || myFriends.length === 0) {
                   return res.status(404).json({
@@ -236,26 +253,38 @@ const getMyFriendsAdd = asyncHandler(async (req, res) => {
                   });
             }
 
-            // Map over the myFriends array to extract details and generate signed URLs
+            // User ki details nikale aur search criteria ka istemal kare
             const friends = await Promise.all(
                   myFriends.map(async (friend) => {
-                        // Generate signed URL for pic using getSignedUrlS3 function
-                        const pic = await getSignedUrlS3(friend.my_id.pic);
+                        const userDetails = await User.findById(friend.my_id); // Assumption: User model is named 'User'
 
-                        // Return friend details with signed URL
-                        return {
-                              first_name: friend.my_id.first_name,
-                              last_name: friend.my_id.last_name,
-                              pic: pic,
-                              _id: friend.my_id._id,
-                        };
+                        // Agar search criteria match hoti hai ya search criteria nahi hai
+                        if (
+                              !searchText ||
+                              userDetails.first_name
+                                    .toLowerCase()
+                                    .includes(searchText) ||
+                              userDetails.username
+                                    .toLowerCase()
+                                    .includes(searchText)
+                        ) {
+                              const pic = await getSignedUrlS3(userDetails.pic); // Generate signed URL for pic using getSignedUrlS3 function
+
+                              // Return friend details with signed URL
+                              return {
+                                    first_name: userDetails.first_name,
+                                    last_name: userDetails.last_name,
+                                    pic: userDetails.pic,
+                                    _id: userDetails._id,
+                              };
+                        }
                   })
             );
 
-            // Send the list of friends in the response
+            // Response bheje
             res.status(200).json({
                   status: true,
-                  friends: friends,
+                  friends: friends.filter(Boolean), // Remove undefined entries from array
             });
       } catch (error) {
             console.error("Error getting friends:", error);
@@ -269,13 +298,16 @@ const getMyFriendsAdd = asyncHandler(async (req, res) => {
 const getMyFriendsrequests = asyncHandler(async (req, res) => {
       try {
             const user_id = req.user._id;
+            const searchText = req.body.search
+                  ? req.body.search.toLowerCase()
+                  : ""; // Convert searchText to lowercase
 
             // Find the MyFriends document for the user
             const myFriends = await MyFriends.findOne({
                   my_id: user_id,
             }).populate({
                   path: "request_id",
-                  select: "first_name last_name pic _id",
+                  select: "first_name last_name pic _id username",
             });
 
             if (!myFriends) {
@@ -285,13 +317,24 @@ const getMyFriendsrequests = asyncHandler(async (req, res) => {
                   });
             }
 
-            // Map over the request_id array to extract details and generate signed URLs
-            const friends = await Promise.all(
-                  myFriends.request_id.map(async (friend) => {
-                        // Generate signed URL for pic using getSignedUrlS3 function
-                        const pic = await getSignedUrlS3(friend.pic);
+            let friends = myFriends.request_id;
 
-                        // Return friend details with signed URL
+            // Filter friends based on search text if available
+            if (searchText) {
+                  friends = friends.filter(
+                        (friend) =>
+                              (friend.first_name &&
+                                    friend.username &&
+                                    friend.first_name
+                                          .toLowerCase()
+                                          .includes(searchText)) ||
+                              friend.username.toLowerCase().includes(searchText)
+                  );
+            }
+
+            const friendsList = await Promise.all(
+                  friends.map(async (friend) => {
+                        const pic = await getSignedUrlS3(`${friend.pic}`); // Assuming pic is the path to the image
                         return {
                               first_name: friend.first_name,
                               last_name: friend.last_name,
@@ -301,7 +344,7 @@ const getMyFriendsrequests = asyncHandler(async (req, res) => {
                   })
             );
 
-            if (friends.length === 0) {
+            if (friendsList.length === 0) {
                   return res.status(200).json({
                         status: false,
                         message: "No Friend Found",
@@ -312,7 +355,7 @@ const getMyFriendsrequests = asyncHandler(async (req, res) => {
             // Send the list of friends in the response
             res.status(200).json({
                   status: true,
-                  friends: friends,
+                  friends: friendsList,
             });
       } catch (error) {
             console.error("Error getting friends:", error);
@@ -322,6 +365,55 @@ const getMyFriendsrequests = asyncHandler(async (req, res) => {
             });
       }
 });
+
+// const getMyFriendsrequests = asyncHandler(async (req, res) => {
+//       try {
+//             const user_id = req.user._id;
+//             // Find the MyFriends document for the user
+//             const myFriends = await MyFriends.findOne({
+//                   my_id: user_id,
+//             }).populate({
+//                   path: "request_id",
+//                   select: "first_name last_name pic _id",
+//             });
+
+//             if (!myFriends) {
+//                   return res.status(404).json({
+//                         status: false,
+//                         message: "MyFriends not found for the user",
+//                   });
+//             }
+
+//             const friends = myFriends.request_id.map((friend) => {
+//                   return {
+//                         first_name: friend.first_name,
+//                         last_name: friend.last_name,
+//                         pic: `${friend.pic}`, // Assuming pic is the path to the image
+//                         _id: friend._id,
+//                   };
+//             });
+
+//             if (friends.length === 0) {
+//                   return res.status(200).json({
+//                         status: false,
+//                         message: "No Friend Found",
+//                         friends: [],
+//                   });
+//             }
+
+//             // Send the list of friends in the response
+//             res.status(200).json({
+//                   status: true,
+//                   friends: friends,
+//             });
+//       } catch (error) {
+//             console.error("Error getting friends:", error);
+//             res.status(500).json({
+//                   status: false,
+//                   message: "Internal Server Error",
+//             });
+//       }
+// });
 
 module.exports = {
       SendFriendRequest,

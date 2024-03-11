@@ -14,6 +14,7 @@ const {
       PutObjectReelsthumbnail,
       DeleteSignedUrlS3,
 } = require("../config/aws-s3.js");
+const { tr } = require("date-fns/locale");
 require("dotenv").config();
 const baseURL = process.env.BASE_URL;
 
@@ -1742,7 +1743,7 @@ const ReelsAdminStatus = asyncHandler(async (req, res) => {
 
 const getReelThumbnailsHome = asyncHandler(async (category_id) => {
       try {
-            const limit = parseInt(5);
+            const limit = parseInt(10);
 
             // Construct the query based on whether category_id is provided or not
             const query = category_id ? { category_id } : {};
@@ -1797,6 +1798,51 @@ const getReelThumbnailsHome = asyncHandler(async (category_id) => {
             };
       }
 });
+const ViewCountAdd = asyncHandler(async (req, res) => {
+      const { Reels_Id } = req.body;
+      const userId = req.user._id;
+
+      try {
+            // Find the video by its _id
+            const reels = await Reel.findById(Reels_Id);
+
+            // Check if the reel exists
+            if (!reels) {
+                  return res.status(404).json({ message: "Reels not found" });
+            }
+
+            // Check if user_id is already in view_user array
+            if (!reels.view_user || !reels.view_user.includes(userId)) {
+                  // Initialize view_user property if not already initialized
+                  if (!reels.view_user) {
+                        reels.view_user = [];
+                  }
+
+                  // Add the user_id to the view_user array
+                  reels.view_user.push(userId);
+
+                  // Increment the view_count
+                  reels.view_count += 1;
+
+                  // Save the updated video
+                  await reels.save();
+
+                  return res.status(200).json({
+                        message: "Reels view count updated successfully",
+                        view_count: reels.view_count,
+                        status: true,
+                  });
+            } else {
+                  return res.status(200).json({
+                        message: "User has already viewed this Reels",
+                        status: true,
+                  });
+            }
+      } catch (error) {
+            console.error(error);
+            return res.status(500).json({ message: "Internal Server Error" });
+      }
+});
 
 module.exports = {
       uploadReel,
@@ -1822,4 +1868,5 @@ module.exports = {
       ReelsAdminStatus,
       getPaginatedReelWebsite,
       getReelThumbnailsHome,
+      ViewCountAdd,
 };

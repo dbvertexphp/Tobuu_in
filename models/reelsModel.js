@@ -7,7 +7,11 @@ const reelSchema = mongoose.Schema({
       share_Id: { type: Number, required: true, unique: true },
       reel_name: { type: String, trim: true, required: true },
       title: { type: String },
-      thumbnail_name: { type: String, trim: true, default:"Reels_defult/reel_defult_thumbunil.jpg"},
+      thumbnail_name: {
+            type: String,
+            trim: true,
+            default: "Reels_defult/reel_defult_thumbunil.jpg",
+      },
       user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       category_id: {
             type: mongoose.Schema.Types.ObjectId,
@@ -17,6 +21,13 @@ const reelSchema = mongoose.Schema({
       view_count: { type: Number, default: 0 },
       description: { type: String, maxlength: 2000 },
       status: { type: Number, default: 0 },
+      view_user: [
+            {
+                  type: mongoose.Schema.Types.ObjectId,
+                  ref: "User", // Assuming you have a User model, adjust the ref accordingly
+                  required: true,
+            },
+      ],
       datetime: {
             type: String,
             default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),

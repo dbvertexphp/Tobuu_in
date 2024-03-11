@@ -1243,7 +1243,7 @@ const ViewCountAdd = asyncHandler(async (req, res) => {
 
 const getVideoThumbnailsHome = asyncHandler(async (category_id) => {
       try {
-            const limit = parseInt(5);
+            const limit = parseInt(10);
 
             const query = category_id ? { category_id } : {};
             const videos = await Video.find({ ...query, deleted_at: null })
