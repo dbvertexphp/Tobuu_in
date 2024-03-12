@@ -1279,9 +1279,7 @@ const NotificationList = asyncHandler(async (req, res) => {
                               message: notification.message,
                               metadata: notification.metadata,
                               type: notification.type,
-                              time: calculateTimeDifference(
-                                    notification.datetime
-                              ),
+                              time: NotificationTimer(notification.datetime),
                               date: notification.datetime.split(" ")[0],
                         };
 
@@ -1382,6 +1380,54 @@ const getUnreadCount = async (req, res) => {
       } catch (error) {
             console.error("Error getting unread count:", error.message);
             throw new Error("Error getting unread count");
+      }
+};
+
+const NotificationTimer = (databaseTime) => {
+      try {
+            if (!databaseTime) {
+                  return "Invalid time";
+            }
+
+            // Calculate current time in IST timezone
+            const currentTime = moment().tz("Asia/Kolkata");
+
+            // Parse the time strings using moment
+            const databaseMoment = moment.tz(
+                  databaseTime,
+                  "DD-MM-YYYY HH:mm:ss",
+                  "Asia/Kolkata"
+            );
+
+            // Calculate the difference between the two times
+            const differenceInMilliseconds = currentTime.diff(databaseMoment);
+
+            // Convert the difference to seconds, minutes, hours, and days
+            const duration = moment.duration(differenceInMilliseconds);
+            const seconds = duration.seconds();
+            const minutes = duration.minutes();
+            const hours = duration.hours();
+            const days = duration.days();
+
+            // Construct the time difference string
+            let timeDifference = "";
+            if (days > 0) {
+                  timeDifference += `${days} days `;
+            } else if (hours > 0) {
+                  timeDifference += `${hours} hours `;
+            } else if (minutes > 0) {
+                  timeDifference += `${minutes} minutes `;
+            } else if (seconds > 0) {
+                  timeDifference += `${seconds} seconds`;
+            }
+
+            // Return the time difference string
+            return timeDifference.trim() === ""
+                  ? "Just now"
+                  : timeDifference.trim();
+      } catch (error) {
+            console.error("Error calculating time difference:", error.message);
+            return "Invalid time format";
       }
 };
 
