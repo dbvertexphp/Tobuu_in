@@ -6,7 +6,7 @@ const {
       User,
 } = require("../models/userModel.js");
 const asyncHandler = require("express-async-handler");
-
+const moment = require("moment-timezone");
 admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
 });
@@ -67,6 +67,9 @@ const createNotification = async (
             const body = `${senderName} ${message}`;
             const imageUrl = `${senderUser.pic || "default-image.jpg"}`;
 
+            const currentTime = moment().tz("Asia/Kolkata");
+            const datetime = currentTime.format("DD-MM-YYYY HH:mm:ss");
+
             // Call sendFCMNotification with the constructed parameters
             await sendFCMNotification(
                   websiteToken.token,
@@ -81,6 +84,7 @@ const createNotification = async (
                   receiver_id,
                   message,
                   type,
+                  datetime,
                   metadata: data,
             });
 

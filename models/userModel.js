@@ -83,7 +83,7 @@ const NotificationMessage = mongoose.Schema({
       type: { type: String, required: true },
       datetime: {
             type: String,
-            default: moments().format("DD-MM-YYYY HH:mm:ss"),
+            required: true,
       },
       metadata: { type: Object, default: null },
 });
