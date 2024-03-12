@@ -867,12 +867,11 @@ const getMyReels = asyncHandler(async (req, res) => {
 
 const getPaginatedReelWebsite = asyncHandler(async (req, res) => {
       const page = parseInt(req.params.page) || 1;
+      const share_Id = parseInt(req.params.share_Id);
       const limit = parseInt(req.query.limit) || 5;
       const startIndex = (page - 1) * limit;
 
       try {
-            // Use Mongoose to fetch paginated Reels from the database
-
             let reeldQuery = Reel.find({ deleted_at: null });
 
             if (req.body.category_id) {
@@ -887,17 +886,23 @@ const getPaginatedReelWebsite = asyncHandler(async (req, res) => {
                   });
             }
 
+            if (share_Id !== 1) {
+                  reeldQuery = reeldQuery.where({ share_Id: share_Id });
+            }
+
+            // Agar share_Id 1 hai, toh kuch nahi karna, waisa hi chalne dena
+
             const paginatedReels = await reeldQuery
                   .sort({ view_count: -1 })
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
                         path: "user_id",
-                        select: "first_name last_name pic", // Adjust these fields based on your User schema
+                        select: "first_name last_name pic",
                   })
                   .populate({
                         path: "category_id",
-                        select: "category_name", // Adjust this field based on your Category schema
+                        select: "category_name",
                   });
 
             const totalReels = await Reel.countDocuments();
@@ -911,7 +916,6 @@ const getPaginatedReelWebsite = asyncHandler(async (req, res) => {
                   });
             }
 
-            // Transform and exclude specific fields in the response
             const transformedReels = [];
 
             const token = req.header("Authorization");
@@ -923,38 +927,33 @@ const getPaginatedReelWebsite = asyncHandler(async (req, res) => {
                   let subscribe_status = "No";
                   let like_count = 0;
 
-                  // Get the like count for each reel
                   const reelLikeCount = await ReelLike.find({
                         reel_id: reel._id,
                   });
 
                   for (const reelLikeCountUpdate of reelLikeCount) {
-                        like_count = reelLikeCountUpdate.count; // Fix the assignment here, use '=' instead of ':'
+                        like_count = reelLikeCountUpdate.count;
                   }
                   const pic_name_url = await getSignedUrlS3(reel.user_id.pic);
-                  // Add the base URL to the user's profile picture
+
                   const updatedUser = {
                         ...reel.user_id._doc,
                         pic: pic_name_url,
                   };
 
                   if (token) {
-                        // Check if the user has liked the current reel
                         const isLiked = await ReelLike.exists({
                               reel_id: reel._id,
                               user_ids: req.user._id,
                         });
 
-                        // Set like_status based on whether the user has liked the reel
                         like_status = isLiked ? "Yes" : "No";
 
-                        // Check if the user has subscribed to the author
                         const isSubscribed = await Subscribes.exists({
                               my_id: reel.user_id._id,
                               subscriber_id: req.user._id,
                         });
 
-                        // Set subscribe_status based on whether the user has subscribed to the author
                         subscribe_status = isSubscribed ? "Yes" : "No";
                   }
                   const thumbnail_name_url = await getSignedUrlS3(
@@ -1800,6 +1799,7 @@ const getReelThumbnailsHome = asyncHandler(async (category_id) => {
             };
       }
 });
+
 const ViewCountAdd = asyncHandler(async (req, res) => {
       const { Reels_Id } = req.body;
       const userId = req.user._id;
@@ -1846,6 +1846,92 @@ const ViewCountAdd = asyncHandler(async (req, res) => {
       }
 });
 
+const ReelViewUserList = asyncHandler(async (req, res) => {
+      const { ReelId, page = 1, limit = 10 } = req.body; // Default page is 1 and limit is 10
+
+      try {
+            // Query the database to retrieve details of users who viewed the specified video
+            const video = await Reel.findById(ReelId).populate({
+                  path: "view_user",
+                  select: "first_name last_name email mobile username pic",
+                  options: {
+                        sort: { createdAt: -1 },
+                        skip: (page - 1) * limit,
+                        limit: limit,
+                  }, // Sorting view_user entries by createdAt in descending order and applying pagination
+            });
+
+            if (!video) {
+                  return res.status(404).json({ message: "Video not found" });
+            }
+
+            const videoReturn = video.view_user.reverse();
+
+            // Format the response
+            const users = await Promise.all(
+                  videoReturn.map(async (user) => {
+                        // Get signed URL for user's profile picture
+                        const pic = await getSignedUrlS3(`${user.pic}`);
+
+                        return {
+                              user: {
+                                    otp_verified: user.otp_verified,
+                                    review: user.review,
+                                    watch_time: user.watch_time,
+                                    subscribe: user.subscribe,
+                                    interest: user.interest,
+                                    pic: pic, // Assign the signed URL to the pic field
+                                    deleted: user.deleted,
+                                    deleted_at: user.deleted_at,
+                                    datetime: user.datetime,
+                                    _id: user._id,
+                                    first_name: user.first_name,
+                                    last_name: user.last_name,
+                                    email: user.email,
+                                    mobile: user.mobile,
+                                    username: user.username,
+                                    password: user.password,
+                                    otp: user.otp,
+                                    dob: user.dob,
+                                    __v: user.__v,
+                              },
+                        };
+                  })
+            );
+
+            res.json({
+                  Users: {
+                        current_page: page,
+                        data: users,
+                        first_page_url: req.originalUrl,
+                        from: (page - 1) * limit + 1,
+                        last_page: Math.ceil(videoReturn.length / limit),
+                        last_page_url: `${req.originalUrl}?page=${Math.ceil(
+                              videoReturn.length / limit
+                        )}`,
+                        links: [],
+                        next_page_url:
+                              page < Math.ceil(videoReturn.length / limit)
+                                    ? `${req.originalUrl}?page=${page + 1}`
+                                    : null,
+                        path: req.baseUrl,
+                        per_page: limit,
+                        prev_page_url:
+                              page > 1
+                                    ? `${req.originalUrl}?page=${page - 1}`
+                                    : null,
+                        to: Math.min(page * limit, videoReturn.length),
+                        total: videoReturn.length,
+                  },
+                  page: page.toString(),
+                  total_rows: videoReturn.length,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: "Internal Server Error" });
+      }
+});
+
 module.exports = {
       uploadReel,
       getPaginatedReel,
@@ -1871,4 +1957,5 @@ module.exports = {
       getPaginatedReelWebsite,
       getReelThumbnailsHome,
       ViewCountAdd,
+      ReelViewUserList,
 };

@@ -23,12 +23,14 @@ const {
       ReelsAdminStatus,
       getPaginatedReelWebsite,
       ViewCountAdd,
+      ReelViewUserList,
 } = require("../controllers/reelControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
 
 const reelRoutes = express.Router();
 reelRoutes.route("/uploadReel").post(protect, uploadReel);
+reelRoutes.route("/ReelViewUserList").post(protect, ReelViewUserList);
 reelRoutes.route("/searchReels").post(searchReels);
 reelRoutes.route("/updateReelLike").post(protect, updateReelLike);
 reelRoutes.route("/addReelComment").post(protect, addReelComment);
@@ -41,7 +43,7 @@ reelRoutes
       .route("/getPaginatedReel/:page")
       .post(commonProtect, getPaginatedReel);
 reelRoutes
-      .route("/getPaginatedReelWebsite/:page")
+      .route("/getPaginatedReelWebsite/:page/:share_Id")
       .post(commonProtect, getPaginatedReelWebsite);
 reelRoutes.route("/getReel_ByCategory").post(commonProtect, getReel_ByCategory);
 reelRoutes.route("/streamReel/:reelId").get(streamReel);

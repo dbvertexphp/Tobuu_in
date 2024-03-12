@@ -1299,6 +1299,93 @@ const getVideoThumbnailsHome = asyncHandler(async (category_id) => {
             };
       }
 });
+
+const VideoViewUserList = asyncHandler(async (req, res) => {
+      const { VideoId, page = 1, limit = 10 } = req.body; // Default page is 1 and limit is 10
+
+      try {
+            // Query the database to retrieve details of users who viewed the specified video
+            const video = await Video.findById(VideoId).populate({
+                  path: "view_user",
+                  select: "first_name last_name email mobile username pic",
+                  options: {
+                        sort: { createdAt: -1 },
+                        skip: (page - 1) * limit,
+                        limit: limit,
+                  }, // Sorting view_user entries by createdAt in descending order and applying pagination
+            });
+
+            if (!video) {
+                  return res.status(404).json({ message: "Video not found" });
+            }
+
+            const videoReturn = video.view_user.reverse();
+
+            // Format the response
+            const users = await Promise.all(
+                  videoReturn.map(async (user) => {
+                        // Get signed URL for user's profile picture
+                        const pic = await getSignedUrlS3(`${user.pic}`);
+
+                        return {
+                              user: {
+                                    otp_verified: user.otp_verified,
+                                    review: user.review,
+                                    watch_time: user.watch_time,
+                                    subscribe: user.subscribe,
+                                    interest: user.interest,
+                                    pic: pic, // Assign the signed URL to the pic field
+                                    deleted: user.deleted,
+                                    deleted_at: user.deleted_at,
+                                    datetime: user.datetime,
+                                    _id: user._id,
+                                    first_name: user.first_name,
+                                    last_name: user.last_name,
+                                    email: user.email,
+                                    mobile: user.mobile,
+                                    username: user.username,
+                                    password: user.password,
+                                    otp: user.otp,
+                                    dob: user.dob,
+                                    __v: user.__v,
+                              },
+                        };
+                  })
+            );
+
+            res.json({
+                  Users: {
+                        current_page: page,
+                        data: users,
+                        first_page_url: req.originalUrl,
+                        from: (page - 1) * limit + 1,
+                        last_page: Math.ceil(videoReturn.length / limit),
+                        last_page_url: `${req.originalUrl}?page=${Math.ceil(
+                              videoReturn.length / limit
+                        )}`,
+                        links: [],
+                        next_page_url:
+                              page < Math.ceil(videoReturn.length / limit)
+                                    ? `${req.originalUrl}?page=${page + 1}`
+                                    : null,
+                        path: req.baseUrl,
+                        per_page: limit,
+                        prev_page_url:
+                              page > 1
+                                    ? `${req.originalUrl}?page=${page - 1}`
+                                    : null,
+                        to: Math.min(page * limit, videoReturn.length),
+                        total: videoReturn.length,
+                  },
+                  page: page.toString(),
+                  total_rows: videoReturn.length,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: "Internal Server Error" });
+      }
+});
+
 module.exports = {
       uploadVideo,
       getPaginatedVideos,
@@ -1318,4 +1405,5 @@ module.exports = {
       VideoAdminStatus,
       ViewCountAdd,
       getVideoThumbnailsHome,
+      VideoViewUserList,
 };

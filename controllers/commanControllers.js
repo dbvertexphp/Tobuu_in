@@ -262,6 +262,7 @@ const getAllReports = asyncHandler(async (req, res) => {
                               ? {
                                       _id: videoData._id,
                                       title: videoData.title,
+                                      deleted_at: videoData.deleted_at,
                                       user_id: {
                                             _id: videoData.user_id._id,
                                             username: videoData.user_id
@@ -279,6 +280,7 @@ const getAllReports = asyncHandler(async (req, res) => {
                                       _id: reelData._id,
                                       title: reelData.title,
                                       share_Id: reelData.share_Id,
+                                      deleted_at: reelData.deleted_at,
                                       user_id: {
                                             _id: reelData.user_id._id,
                                             username: reelData.user_id.username,
@@ -294,6 +296,7 @@ const getAllReports = asyncHandler(async (req, res) => {
                               ? {
                                       _id: timelineData._id,
                                       title: timelineData.title,
+                                      deleted_at: timelineData.deleted_at,
                                       user_id: {
                                             _id: timelineData.user_id._id,
                                             username: timelineData.user_id

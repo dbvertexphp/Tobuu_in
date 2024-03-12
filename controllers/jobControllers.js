@@ -91,11 +91,17 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
             }
 
             const filteredJobs = await jobQuery.exec();
-
-            const paginatedJobs = filteredJobs.filter(
-                  (job) =>
-                        job.user_id._id.toString() !== req.user._id.toString()
-            );
+            const token = req.header("Authorization");
+            let paginatedJobs;
+            if (token) {
+                  paginatedJobs = filteredJobs.filter(
+                        (job) =>
+                              job.user_id._id.toString() !==
+                              req.user._id.toString()
+                  );
+            } else {
+                  paginatedJobs = await jobQuery.exec();
+            }
 
             const hasMore = startIndex + paginatedJobs.length < totalJobs;
 
@@ -105,8 +111,6 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
                         status: true,
                   });
             }
-
-            const token = req.header("Authorization");
 
             const jobsWithAdditionalInfo = await Promise.all(
                   paginatedJobs.map(async (job) => {
@@ -349,6 +353,7 @@ const getAppliedJobs = asyncHandler(async (req, res) => {
                   user_ids: user_id,
             }).populate({
                   path: "job_id",
+                  match: { deleted_at: null }, // Filter to retrieve only job_id documents with deleted_at as null
                   populate: [
                         { path: "category_id", select: "category_name" },
                         { path: "user_id", select: "first_name pic last_name" },
@@ -375,6 +380,10 @@ const getAppliedJobs = asyncHandler(async (req, res) => {
             const transformedJobs = await Promise.all(
                   appliedJobs.map(
                         async ({ job_id, createdAt, updatedAt, __v }) => {
+                              if (!job_id) {
+                                    // Return the specified message
+                                    return null;
+                              }
                               try {
                                     const pic_name_url = await getSignedUrlS3(
                                           job_id.user_id.pic
@@ -413,12 +422,21 @@ const getAppliedJobs = asyncHandler(async (req, res) => {
                         }
                   )
             );
-
-            res.json({
-                  message: "Applied jobs fetched successfully.",
-                  status: true,
-                  data: transformedJobs,
-            });
+            if (transformedJobs.length === 1 && transformedJobs[0] === null) {
+                  // Return an empty array in the response
+                  return res.json({
+                        message: "Admin deactivated your applied job",
+                        status: true,
+                        data: [],
+                  });
+            } else {
+                  // Return the transformedJobs array in the response
+                  return res.json({
+                        message: "Applied jobs fetched successfully.",
+                        status: true,
+                        data: transformedJobs,
+                  });
+            }
       } catch (error) {
             console.error(error);
             res.status(500).json({

@@ -17,6 +17,7 @@ const {
       getPaginatedVideosAdmin,
       VideoAdminStatus,
       ViewCountAdd,
+      VideoViewUserList
 } = require("../controllers/videoControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
@@ -24,6 +25,7 @@ const commonProtect = require("../middleware/comman_authMiddleware.js");
 const videoRoutes = express.Router();
 
 videoRoutes.route("/uploadVideos").post(protect, uploadVideo);
+videoRoutes.route("/VideoViewUserList").post(protect, VideoViewUserList);
 videoRoutes.route("/searchVideos").post(searchVideos);
 videoRoutes.route("/updateVideoLike").post(protect, updateVideoLike);
 videoRoutes.route("/addVideoComment").post(protect, addVideoComment);
