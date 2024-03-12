@@ -188,7 +188,7 @@ const getMyFriends = asyncHandler(async (req, res) => {
             }
 
             let friends = myFriends.friends_id;
-
+            friends = friends.reverse();
             // Filter friends based on search text if available
             if (searchText) {
                   friends = friends.filter(
@@ -268,7 +268,7 @@ const getMyFriendsAdd = asyncHandler(async (req, res) => {
                                     .toLowerCase()
                                     .includes(searchText)
                         ) {
-                              const pic = await getSignedUrlS3(userDetails.pic); // Generate signed URL for pic using getSignedUrlS3 function
+                              // Generate signed URL for pic using getSignedUrlS3 function
 
                               // Return friend details with signed URL
                               return {
@@ -318,7 +318,7 @@ const getMyFriendsrequests = asyncHandler(async (req, res) => {
             }
 
             let friends = myFriends.request_id;
-
+            friends = friends.reverse();
             // Filter friends based on search text if available
             if (searchText) {
                   friends = friends.filter(
@@ -365,55 +365,6 @@ const getMyFriendsrequests = asyncHandler(async (req, res) => {
             });
       }
 });
-
-// const getMyFriendsrequests = asyncHandler(async (req, res) => {
-//       try {
-//             const user_id = req.user._id;
-//             // Find the MyFriends document for the user
-//             const myFriends = await MyFriends.findOne({
-//                   my_id: user_id,
-//             }).populate({
-//                   path: "request_id",
-//                   select: "first_name last_name pic _id",
-//             });
-
-//             if (!myFriends) {
-//                   return res.status(404).json({
-//                         status: false,
-//                         message: "MyFriends not found for the user",
-//                   });
-//             }
-
-//             const friends = myFriends.request_id.map((friend) => {
-//                   return {
-//                         first_name: friend.first_name,
-//                         last_name: friend.last_name,
-//                         pic: `${friend.pic}`, // Assuming pic is the path to the image
-//                         _id: friend._id,
-//                   };
-//             });
-
-//             if (friends.length === 0) {
-//                   return res.status(200).json({
-//                         status: false,
-//                         message: "No Friend Found",
-//                         friends: [],
-//                   });
-//             }
-
-//             // Send the list of friends in the response
-//             res.status(200).json({
-//                   status: true,
-//                   friends: friends,
-//             });
-//       } catch (error) {
-//             console.error("Error getting friends:", error);
-//             res.status(500).json({
-//                   status: false,
-//                   message: "Internal Server Error",
-//             });
-//       }
-// });
 
 module.exports = {
       SendFriendRequest,

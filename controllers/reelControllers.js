@@ -136,6 +136,7 @@ const getPaginatedReel = asyncHandler(async (req, res) => {
             }
 
             const paginatedReels = await reeldQuery
+                  .sort({ view_count: -1 })
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -745,9 +746,9 @@ const updateReelViewCount = asyncHandler(async (req, res) => {
 
             // Update the view count in the Reel model
             const updatedReel = await Reel.findByIdAndUpdate(
-                  objectIdReelId,
-                  { $inc: { view_count: 1 } }, // Increment view_count by 1
-                  { new: true } // Return the updated document
+                  objectIdReelId
+                  // { $inc: { view_count: 1 } },
+                  // { new: true }
             );
 
             if (!updatedReel) {
@@ -887,6 +888,7 @@ const getPaginatedReelWebsite = asyncHandler(async (req, res) => {
             }
 
             const paginatedReels = await reeldQuery
+                  .sort({ view_count: -1 })
                   .skip(startIndex)
                   .limit(limit)
                   .populate({

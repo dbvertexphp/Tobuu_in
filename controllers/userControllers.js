@@ -1240,7 +1240,7 @@ const NotificationList = asyncHandler(async (req, res) => {
             const notifications = await NotificationMessages.find({
                   receiver_id: user_id,
             })
-                  .sort({ datetime: 1 })
+                  .sort({ _id: -1 })
                   .skip((page - 1) * pageSize)
                   .limit(pageSize);
 
