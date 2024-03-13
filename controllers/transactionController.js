@@ -83,13 +83,14 @@ const WebhookGet = asyncHandler(async (req, res) => {
                   });
                   const Notificationmessage = `${senderUser.first_name} has paid you Rs ${convertedAmount} for hiring ${hireUser.first_name}`;
                   const type = "Transaction";
-
-                  createNotificationAdmin(
-                        receiverdata.id,
-                        senderUser._id,
-                        Notificationmessage,
-                        type
-                  );
+                  if (payment_status == "payment.captured") {
+                        createNotificationAdmin(
+                              senderUser._id,
+                              receiverdata.id,
+                              Notificationmessage,
+                              type
+                        );
+                  }
             } else {
                   console.log("Invalid signature");
             }
@@ -113,7 +114,8 @@ const getAlltransactionList = asyncHandler(async (req, res) => {
                   .populate({
                         path: "hire_id",
                         select: "username",
-                  });
+                  })
+                  .sort({ _id: -1 });
 
             // Convert UTC to IST and change format
             const formattedTransactions = transactions.map((transaction) => {
@@ -219,7 +221,8 @@ const getAllUserTransactions = asyncHandler(async (req, res) => {
                   .populate({
                         path: "hire_id",
                         select: "username",
-                  });
+                  })
+                  .sort({ _id: -1 });
 
             // Convert UTC to IST and change format
             const formattedTransactions = transactions.map((transaction) => {
