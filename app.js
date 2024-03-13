@@ -19,6 +19,7 @@ const { subscribeRoutes } = require("./routes/subscribeRoutes.js");
 const { timelineRoutes } = require("./routes/timelineRoutes.js");
 const { commanRoutes } = require("./routes/commanRoutes.js");
 const { transactionRoutes } = require("./routes/transactionRoutes.js");
+const { adminRoutes } = require("./routes/adminRoutes.js");
 // --------------------- Routes -------------------------------
 const { notFound, errorHandler } = require("./middleware/errorMiddleware.js");
 const cors = require("cors");
@@ -55,6 +56,7 @@ app.use("/api/myfriend", myfriendRoutes);
 app.use("/api/subscribe", subscribeRoutes);
 app.use("/api/comman", commanRoutes);
 app.use("/api/transaction", transactionRoutes);
+app.use("/api/admin", adminRoutes);
 // --------------------------Routes------------------------------
 
 // --------------------------deploymentssssss------------------------------

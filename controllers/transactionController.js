@@ -3,8 +3,10 @@ const crypto = require("crypto");
 const Razorpay = require("razorpay");
 const asyncHandler = require("express-async-handler");
 const Transaction = require("../models/transactionModel");
+const { User } = require("../models/userModel.js");
 const moment = require("moment-timezone");
 const baseURL = process.env.BASE_URL;
+const { createNotificationAdmin } = require("./notificationControllers.js");
 
 const instance = new Razorpay({
       key_id: process.env.REZORPAY_KEY,
@@ -68,6 +70,26 @@ const WebhookGet = asyncHandler(async (req, res) => {
                               },
                               { new: true, upsert: true } // Upsert: Create if not exists, new: Return updated document
                         );
+
+                  const receiverdata = await User.findOne({
+                        IsAdmin: "true",
+                  });
+
+                  const senderUser = await User.findOne({
+                        _id: userId,
+                  });
+                  const hireUser = await User.findOne({
+                        _id: hireId,
+                  });
+                  const Notificationmessage = `${senderUser.first_name} has paid you Rs ${convertedAmount} for hiring ${hireUser.first_name}`;
+                  const type = "Transaction";
+
+                  createNotificationAdmin(
+                        receiverdata.id,
+                        senderUser._id,
+                        Notificationmessage,
+                        type
+                  );
             } else {
                   console.log("Invalid signature");
             }

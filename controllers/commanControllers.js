@@ -12,11 +12,13 @@ const {
       ContactUs,
 } = require("../models/companyDetailsModel.js");
 const { Reel, ReelLike, ReelComment } = require("../models/reelsModel.js");
+const { User } = require("../models/userModel.js");
 const {
       PostTimeline,
       PostTimelineLike,
       TimelineComment,
 } = require("../models/posttimelineModel.js");
+const { createNotificationAdmin } = require("./notificationControllers.js");
 const path = require("path");
 require("dotenv").config();
 const baseURL = process.env.BASE_URL;
@@ -79,6 +81,19 @@ const contactUs = asyncHandler(async (req, res) => {
                         .json({ error: "Missing required parameters" });
             }
 
+            const receiverdata = await User.findOne({
+                  IsAdmin: "true",
+            });
+
+            const senderUser = await User.findOne({
+                  _id: receiverdata.id,
+            });
+
+            const first_name = name;
+
+            const Notificationmessage = `${first_name} has contacted you`;
+            const type = "ContactUs";
+
             // Create a new ContactUs document
             contactUsEntry = await ContactUs.create({
                   name,
@@ -87,6 +102,12 @@ const contactUs = asyncHandler(async (req, res) => {
                   message,
             });
 
+            createNotificationAdmin(
+                  receiverdata.id,
+                  receiverdata._id,
+                  Notificationmessage,
+                  type
+            );
             // Save the ContactUs document to the database
 
             // Send a success response
@@ -120,6 +141,30 @@ const report = asyncHandler(async (req, res) => {
                         .json({ error: "Missing required parameters" });
             }
 
+            const receiverdata = await User.findOne({
+                  IsAdmin: "true",
+            });
+
+            const senderUser = await User.findOne({
+                  _id: user_id,
+            });
+
+            let titles;
+
+            if (report_type == "video") {
+                  titles = await Video.findOne({
+                        _id: type_id,
+                  });
+            } else if (report_type == "reels") {
+                  titles = await Reel.findOne({
+                        _id: type_id,
+                  });
+            } else {
+                  titles = await PostTimeline.findOne({
+                        _id: type_id,
+                  });
+            }
+
             // Create a new Report document
             const reportEntry = await Report.create({
                   user_id,
@@ -128,6 +173,22 @@ const report = asyncHandler(async (req, res) => {
                   title,
                   description,
             });
+
+            message = `${senderUser.first_name} ${senderUser.last_name} has reported on ${titles.title}`;
+            type = "Report";
+
+            const Metadata = {
+                  report_type: report_type,
+                  type_id: type_id, // Assuming JobMetadata_id contains the Job_id
+            };
+
+            createNotificationAdmin(
+                  user_id,
+                  receiverdata._id,
+                  message,
+                  type,
+                  Metadata
+            );
 
             // Send a success response
             return res.json({
@@ -159,6 +220,7 @@ const getAllContact = asyncHandler(async (req, res) => {
 
       try {
             const reels = await ContactUs.find(query)
+                  .sort({ _id: -1 })
                   .skip((page - 1) * perPage)
                   .limit(perPage);
 
@@ -240,6 +302,7 @@ const getAllReports = asyncHandler(async (req, res) => {
             }
 
             const reports = await Report.find(query)
+                  .sort({ _id: -1 })
                   .skip((page - 1) * perPage)
                   .limit(perPage)
                   .populate({

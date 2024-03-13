@@ -18,6 +18,9 @@ const Category = require("../models/categoryModel.js");
 const Review = require("../models/reviewModel.js");
 const BankDetails = require("../models/bankdetailsModel.js");
 const Transaction = require("../models/transactionModel");
+const {
+      AdminNotificationMessages,
+} = require("../models/adminnotificationsmodel.js");
 const multer = require("multer");
 const MyFriends = require("../models/myfrindsModel.js");
 const { Hire, HireStatus } = require("../models/hireModel.js");
@@ -967,6 +970,10 @@ const getAllDashboardCount = asyncHandler(async (req, res) => {
             const reels = await Reel.countDocuments();
             const postTimeline = await PostTimeline.countDocuments();
             const postJob = await PostJob.countDocuments();
+            const adminnotifications =
+                  await AdminNotificationMessages.countDocuments({
+                        readstatus: false,
+                  }); // Counting only documents with readstatus false
             const transactionAmountSum = await Transaction.aggregate([
                   {
                         $group: {
@@ -989,6 +996,7 @@ const getAllDashboardCount = asyncHandler(async (req, res) => {
                   reels: reels,
                   PostTimeline: postTimeline,
                   PostJob: postJob,
+                  adminnotifications: adminnotifications,
                   transactionTotalAmount: transactionTotalAmount,
             });
       } catch (error) {
