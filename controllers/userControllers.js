@@ -29,6 +29,7 @@ const baseURL = process.env.BASE_URL;
 const { createNotification } = require("./notificationControllers.js");
 const { PutObjectProfilePic, getSignedUrlS3 } = require("../config/aws-s3.js");
 const dayjs = require("dayjs");
+
 const getUsers = asyncHandler(async (req, res) => {
       const userId = req.user._id;
       try {
@@ -260,15 +261,31 @@ const authUser = asyncHandler(async (req, res) => {
             return;
       }
 
-      if (userdata.otp_verified === 0) {
+      const isPasswordMatch = await userdata.matchPassword(password);
+
+      if (!isPasswordMatch) {
             res.status(200).json({
-                  message: "OTP Not verified",
+                  message: "Invalid Password",
                   status: false,
             });
             return;
       }
 
-      const isPasswordMatch = await userdata.matchPassword(password);
+      if (userdata.otp_verified === 0) {
+            const otp = generateOTP();
+            const type = "Signup";
+            const first_name = userdata.first_name;
+            TextLocalApi(type, first_name, mobile, otp);
+            const result = await User.updateOne(
+                  { _id: userdata._id },
+                  { $set: { otp: otp } }
+            );
+            res.status(200).json({
+                  message: "OTP Not verified",
+                  status: true,
+            });
+            return;
+      }
 
       if (isPasswordMatch) {
             const token = generateToken(userdata._id);
@@ -362,7 +379,7 @@ const verifyOtp = asyncHandler(async (req, res) => {
             );
 
             if (result.nModified > 0) {
-                  console.log("OTP verification status updated successfully.");
+                   console.log("OTP verification status updated successfully.");
             } else {
                   console.log(
                         "No matching user found or OTP verification status already set."
@@ -1106,7 +1123,6 @@ const getReview = asyncHandler(async (req, res) => {
             const user_id = req.params.id;
             const page = req.query.page || 1;
             const pageSize = 10;
-            console.log(user_id);
 
             const notifications = await Review.find({
                   review_id: user_id,
@@ -1525,7 +1541,6 @@ function TextLocalApi(type, name, mobile, otp) {
       const sendSms = async () => {
             try {
                   const response = await axios.post(url);
-                  console.log("response", response.data);
             } catch (error) {
                   console.error("error", error.message);
             }
