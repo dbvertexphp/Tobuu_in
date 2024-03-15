@@ -773,58 +773,111 @@ const updateReelViewCount = asyncHandler(async (req, res) => {
 });
 
 const getMyReels = asyncHandler(async (req, res) => {
-      const user_id = req.user._id; // Assuming you have user authentication middleware
-      const page = parseInt(req.query.page) || 1; // Default to page 1 if not provided
-      const limit = parseInt(req.query.limit) || 10; // Default limit to 3 if not provided
+      const user_id = req.user._id;
+      const page = parseInt(req.params.page) || 1;
+      const limit = parseInt(req.query.limit) || 5;
+      const startIndex = (page - 1) * limit;
 
       try {
             // Fetch reels from the database for the given user_id with pagination
-            const reels = await Reel.find({ user_id, deleted_at: null })
-                  .populate({
-                        path: "user_id",
-                        select: "first_name last_name pic", // Adjust these fields based on your User schema
-                  })
-                  .populate({
-                        path: "category_id",
-                        select: "category_name", // Adjust this field based on your Category schema
-                  })
-                  .skip((page - 1) * limit) // Skip records based on the page
-                  .limit(limit); // Limit the number of records per page
+            let reeldQuery = Reel.find({ user_id, deleted_at: null });
 
-            // Check if there are no reels
-            if (!reels || reels.length === 0) {
-                  return res.json({
-                        page: page,
-                        limit: limit,
-                        data: [],
-                        hasMore: false, // No more data available
-                        status: true,
+            if (req.body.category_id) {
+                  reeldQuery = reeldQuery.where({
+                        category_id: req.body.category_id,
                   });
             }
 
-            // Add the base URL to the pic field in user details
+            if (req.body.search) {
+                  reeldQuery = reeldQuery.where({
+                        title: { $regex: req.body.search, $options: "i" },
+                  });
+            }
+
+            let totalReels;
+
+            const category_id = req.body.category_id;
+            const search = req.body.search;
+
+            if (category_id) {
+                  reeldQuery = reeldQuery
+                        .where("category_id")
+                        .equals(category_id);
+                  totalReels = await Reel.countDocuments({
+                        user_id,
+                        category_id,
+                        deleted_at: null,
+                  });
+            } else if (search) {
+                  reeldQuery = reeldQuery.where(
+                        "title",
+                        new RegExp(search, "i")
+                  );
+                  totalReels = await Reel.countDocuments({
+                        user_id,
+                        title: search,
+                        deleted_at: null,
+                  });
+            } else {
+                  totalReels = await Reel.countDocuments({
+                        user_id,
+                        deleted_at: null,
+                  });
+                  console.log(totalReels);
+            }
+
+            const paginatedReels = await reeldQuery
+                  .sort({ view_count: -1 })
+                  .skip(startIndex)
+                  .limit(limit)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic",
+                  })
+                  .populate({
+                        path: "category_id",
+                        select: "category_name",
+                  })
+                  .exec();
+
+            const hasMore = startIndex + paginatedReels.length < totalReels;
+
+
+            if (paginatedReels.length === 0) {
+                  return res.json({
+                        message: "Reels Not Found",
+                        status: true,
+                        data: [],
+                  });
+            }
+
+            const token = req.header("Authorization");
+
+            // Add the base URL to the pic field in user details and handle likes and subscriptions
             const updatedReels = await Promise.all(
-                  reels.map(async (reel) => {
+                  paginatedReels.map(async (reel) => {
                         let like_status = "No"; // Move the declaration inside the loop
                         let subscribe_status = "No"; // Move the declaration inside the loop
                         const likeCount = await getReelLikeCount(reel._id);
-                        // Check if the user has liked the current post
-                        const isLiked = await ReelLike.exists({
-                              post_timeline_id: reel._id,
-                              user_ids: req.user._id,
-                        });
 
-                        // Set like_status based on whether the user has liked the post
-                        like_status = isLiked ? "Yes" : "No";
+                        if (token) {
+                              // Check if the user has liked the current post
+                              const isLiked = await ReelLike.exists({
+                                    post_timeline_id: reel._id,
+                                    user_ids: req.user._id,
+                              });
 
-                        const issubscribe = await Subscribes.exists({
-                              my_id: reel.user_id._id,
-                              subscriber_id: req.user._id,
-                        });
+                              // Set like_status based on whether the user has liked the post
+                              like_status = isLiked ? "Yes" : "No";
 
-                        // Set subscribe_status based on whether the user has subscribed to the author
-                        subscribe_status = issubscribe ? "Yes" : "No";
+                              const issubscribe = await Subscribes.exists({
+                                    my_id: reel.user_id._id,
+                                    subscriber_id: req.user._id,
+                              });
 
+                              // Set subscribe_status based on whether the user has subscribed to the author
+                              subscribe_status = issubscribe ? "Yes" : "No";
+                        }
                         const thumbnail_name_url = await getSignedUrlS3(
                               reel.thumbnail_name
                         );
@@ -841,8 +894,8 @@ const getMyReels = asyncHandler(async (req, res) => {
                                     pic: pic_name_url, // Assuming "pic" is the field in your User schema that contains the URL
                               },
                               like_count: likeCount,
-                              like_status: like_status, // Add like_status to the response
-                              subscribe_status: subscribe_status, // Add subscribe_status to the response
+                              like_status: like_status,
+                              subscribe_status: subscribe_status,
                               reel_url: video_name_url,
                               thumbnail_name: thumbnail_name_url,
                         };
@@ -850,11 +903,153 @@ const getMyReels = asyncHandler(async (req, res) => {
             );
 
             res.json({
-                  page: page,
-                  limit: limit,
-                  data: updatedReels,
-                  hasMore: updatedReels.length === limit, // Determine if there are more records available
+                  message: "Reels fetched successfully.",
                   status: true,
+                  data: updatedReels,
+                  hasMore,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
+const getUserReels = asyncHandler(async (req, res) => {
+      const { user_id, page } = req.params;
+      const limit = parseInt(req.query.limit) || 5;
+      const startIndex = (page - 1) * limit;
+
+      try {
+            // Fetch reels from the database for the given user_id with pagination
+            let reeldQuery = Reel.find({ user_id, deleted_at: null });
+
+            if (req.body.category_id) {
+                  reeldQuery = reeldQuery.where({
+                        category_id: req.body.category_id,
+                  });
+            }
+
+            if (req.body.search) {
+                  reeldQuery = reeldQuery.where({
+                        title: { $regex: req.body.search, $options: "i" },
+                  });
+            }
+
+            let totalReels;
+
+            const category_id = req.body.category_id;
+            const search = req.body.search;
+
+            if (category_id) {
+                  reeldQuery = reeldQuery
+                        .where("category_id")
+                        .equals(category_id);
+                  totalReels = await Reel.countDocuments({
+                        user_id,
+                        category_id,
+                        deleted_at: null,
+                  });
+            } else if (search) {
+                  reeldQuery = reeldQuery.where(
+                        "title",
+                        new RegExp(search, "i")
+                  );
+                  totalReels = await Reel.countDocuments({
+                        user_id,
+                        title: search,
+                        deleted_at: null,
+                  });
+            } else {
+                  totalReels = await Reel.countDocuments({
+                        user_id,
+                        deleted_at: null,
+                  });
+                  console.log(totalReels);
+            }
+
+            const paginatedReels = await reeldQuery
+                  .sort({ view_count: -1 })
+                  .skip(startIndex)
+                  .limit(limit)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic",
+                  })
+                  .populate({
+                        path: "category_id",
+                        select: "category_name",
+                  })
+                  .exec();
+
+            const hasMore = startIndex + paginatedReels.length < totalReels;
+
+            if (paginatedReels.length === 0) {
+                  return res.json({
+                        message: "Reels Not Found",
+                        status: true,
+                        data: [],
+                  });
+            }
+
+            const token = req.header("Authorization");
+
+            // Add the base URL to the pic field in user details and handle likes and subscriptions
+            const updatedReels = await Promise.all(
+                  paginatedReels.map(async (reel) => {
+                        let like_status = "No"; // Move the declaration inside the loop
+                        let subscribe_status = "No"; // Move the declaration inside the loop
+                        const likeCount = await getReelLikeCount(reel._id);
+
+                        if (token) {
+                              // Check if the user has liked the current post
+                              const isLiked = await ReelLike.exists({
+                                    post_timeline_id: reel._id,
+                                    user_ids: req.user._id,
+                              });
+
+                              // Set like_status based on whether the user has liked the post
+                              like_status = isLiked ? "Yes" : "No";
+
+                              const issubscribe = await Subscribes.exists({
+                                    my_id: reel.user_id._id,
+                                    subscriber_id: req.user._id,
+                              });
+
+                              // Set subscribe_status based on whether the user has subscribed to the author
+                              subscribe_status = issubscribe ? "Yes" : "No";
+                        }
+                        const thumbnail_name_url = await getSignedUrlS3(
+                              reel.thumbnail_name
+                        );
+                        const video_name_url = await getSignedUrlS3(
+                              reel.reel_name
+                        );
+                        const pic_name_url = await getSignedUrlS3(
+                              reel.user_id.pic
+                        );
+                        return {
+                              ...reel._doc,
+                              user_id: {
+                                    ...reel.user_id._doc,
+                                    pic: pic_name_url, // Assuming "pic" is the field in your User schema that contains the URL
+                              },
+                              like_count: likeCount,
+                              like_status: like_status,
+                              subscribe_status: subscribe_status,
+                              reel_url: video_name_url,
+                              thumbnail_name: thumbnail_name_url,
+                        };
+                  })
+            );
+
+            res.json({
+                  message: "Reels fetched successfully.",
+                  status: true,
+                  data: updatedReels,
+                  hasMore,
             });
       } catch (error) {
             console.error(error);
@@ -1210,99 +1405,6 @@ const getMyReel_ByCategory = asyncHandler(async (req, res) => {
             res.status(500).json({
                   message: "Internal Server Error",
                   error: error.message,
-                  status: false,
-            });
-      }
-});
-
-const getUserReels = asyncHandler(async (req, res) => {
-      const { user_id, page } = req.params;
-      const limit = parseInt(req.query.limit) || 5;
-      const startIndex = (page - 1) * limit;
-
-      try {
-            // Fetch reels from the database for the given user_id with pagination
-            const reels = await Reel.find({ user_id, deleted_at: null })
-                  .skip(startIndex)
-                  .limit(limit)
-                  .populate({
-                        path: "user_id",
-                        select: "first_name last_name pic", // Adjust these fields based on your User schema
-                  })
-                  .populate({
-                        path: "category_id",
-                        select: "category_name", // Adjust this field based on your Category schema
-                  });
-
-            // Check if there are no reels
-            if (!reels || reels.length === 0) {
-                  return res.json({
-                        message: "No Reel Posts Available.",
-                        status: true,
-                        data: [],
-                  });
-            }
-
-            const token = req.header("Authorization");
-
-            // Add the base URL to the pic field in user details and handle likes and subscriptions
-            const updatedReels = await Promise.all(
-                  reels.map(async (reel) => {
-                        let like_status = "No"; // Move the declaration inside the loop
-                        let subscribe_status = "No"; // Move the declaration inside the loop
-                        const likeCount = await getReelLikeCount(reel._id);
-
-                        if (token) {
-                              // Check if the user has liked the current post
-                              const isLiked = await ReelLike.exists({
-                                    post_timeline_id: reel._id,
-                                    user_ids: req.user._id,
-                              });
-
-                              // Set like_status based on whether the user has liked the post
-                              like_status = isLiked ? "Yes" : "No";
-
-                              const issubscribe = await Subscribes.exists({
-                                    my_id: reel.user_id._id,
-                                    subscriber_id: req.user._id,
-                              });
-
-                              // Set subscribe_status based on whether the user has subscribed to the author
-                              subscribe_status = issubscribe ? "Yes" : "No";
-                        }
-                        const thumbnail_name_url = await getSignedUrlS3(
-                              reel.thumbnail_name
-                        );
-                        const video_name_url = await getSignedUrlS3(
-                              reel.reel_name
-                        );
-                        const pic_name_url = await getSignedUrlS3(
-                              reel.user_id.pic
-                        );
-                        return {
-                              ...reel._doc,
-                              user_id: {
-                                    ...reel.user_id._doc,
-                                    pic: pic_name_url, // Assuming "pic" is the field in your User schema that contains the URL
-                              },
-                              like_count: likeCount,
-                              like_status: like_status,
-                              subscribe_status: subscribe_status,
-                              reel_url: video_name_url,
-                              thumbnail_name: thumbnail_name_url,
-                        };
-                  })
-            );
-
-            res.json({
-                  message: "Reels fetched successfully.",
-                  status: true,
-                  data: updatedReels,
-            });
-      } catch (error) {
-            console.error(error);
-            res.status(500).json({
-                  message: "Internal Server Error",
                   status: false,
             });
       }

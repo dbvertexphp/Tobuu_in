@@ -40,7 +40,7 @@ timelineRoutes
 timelineRoutes
       .route("/getUserTimeline/:user_id/:page")
       .get(commonProtect, getUserTimeline);
-timelineRoutes.route("/getMyTimeline").get(protect, getMyTimeline);
+timelineRoutes.route("/getMyTimeline/:page").get(protect, getMyTimeline);
 timelineRoutes.route("/getAllTimeline").post(protect, getAllTimeline);
 timelineRoutes.route("/statusUpdate").post(protect, statusUpdate);
 

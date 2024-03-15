@@ -645,13 +645,33 @@ const Timelinedelete = asyncHandler(async (req, res) => {
 
 const getMyTimeline = asyncHandler(async (req, res) => {
       const user_id = req.user._id;
+      const limit = parseInt(req.query.limit) || 5;
+      const page = parseInt(req.params.page) || 1;
+      const startIndex = (page - 1) * limit;
 
       try {
-            const timelines = await PostTimeline.find({
+            const category_id = req.body.category_id; // Extract category_id from query parameters
+            const search = req.body.search; // Extract search term from query parameters
+
+            // Construct the query based on category_id, search term, and deleted_at: null
+            const query = {
                   user_id,
-                  deleted_at: null,
-            })
+                  deleted_at: null, // Include only posts where deleted_at is null
+            };
+
+            if (category_id) {
+                  query.category_id = category_id; // Filter by category_id if provided
+            }
+
+            if (search) {
+                  query.title = { $regex: search, $options: "i" }; // Search by title if search term provided
+            }
+
+            // Fetch paginated Timelines from the database based on the constructed query
+            const paginatedTimelines = await PostTimeline.find(query)
+                  .skip(startIndex)
                   .sort({ _id: -1 })
+                  .limit(limit)
                   .populate({
                         path: "user_id",
                         select: "first_name last_name pic",
@@ -661,95 +681,16 @@ const getMyTimeline = asyncHandler(async (req, res) => {
                         select: "category_name",
                   });
 
-            if (!timelines || timelines.length === 0) {
+            // Calculate totalTimelines with the applied filters
+            const totalTimelines = await PostTimeline.countDocuments(query);
+
+            const hasMore =
+                  startIndex + paginatedTimelines.length < totalTimelines;
+
+            if (paginatedTimelines.length === 0) {
                   return res.json({
-                        message: "No timeline Posts Available.",
+                        message: "Timeline Post Not Found",
                         status: true,
-                        data: [],
-                  });
-            }
-
-            const updatedTimeline = await Promise.all(
-                  timelines.map(async (timeline) => {
-                        let like_status = "No"; // Move the declaration inside the loop
-                        let subscribe_status = "No"; // Move the declaration inside the loop
-                        const likeCount = await getTimelineLikeCount(
-                              timeline._id
-                        );
-                        // Check if the user has liked the current post
-                        const isLiked = await PostTimelineLike.exists({
-                              post_timeline_id: timeline._id,
-                              user_ids: req.user._id,
-                        });
-
-                        // Set like_status based on whether the user has liked the post
-                        like_status = isLiked ? "Yes" : "No";
-
-                        const issubscribe = await Subscribes.exists({
-                              my_id: timeline.user_id._id,
-                              subscriber_id: req.user._id,
-                        });
-
-                        // Set subscribe_status based on whether the user has subscribed to the author
-                        subscribe_status = issubscribe ? "Yes" : "No";
-                        const pic_name_url = await getSignedUrlS3(
-                              timeline.user_id.pic
-                        );
-                        return {
-                              ...timeline._doc,
-                              user_id: {
-                                    ...timeline.user_id._doc,
-                                    pic: pic_name_url, // Assuming "pic" is the field in your User schema that contains the URL
-                              },
-                              like_count: likeCount,
-                              like_status: like_status, // Add like_status to the response
-                              subscribe_status: subscribe_status, // Add subscribe_status to the response
-                        };
-                  })
-            );
-
-            res.json({
-                  message: "Timeline fetched successfully.",
-                  status: true,
-                  data: updatedTimeline,
-            });
-      } catch (error) {
-            console.error(error);
-            res.status(500).json({
-                  message: "Internal Server Error",
-                  status: false,
-            });
-      }
-});
-
-const getUserTimeline = asyncHandler(async (req, res) => {
-      const { user_id, page } = req.params;
-      const limit = parseInt(req.query.limit) || 5;
-      const startIndex = (page - 1) * limit;
-
-      try {
-            // Fetch timeline posts from the database for the given user_id with pagination
-            const timelines = await PostTimeline.find({
-                  user_id,
-                  deleted_at: null,
-            })
-                  .skip(startIndex)
-                  .limit(limit)
-                  .populate({
-                        path: "user_id",
-                        select: "first_name last_name pic", // Adjust these fields based on your User schema
-                  })
-                  .populate({
-                        path: "category_id",
-                        select: "category_name", // Adjust this field based on your Category schema
-                  });
-
-            // Check if there are no timeline posts
-            if (!timelines || timelines.length === 0) {
-                  return res.json({
-                        message: "No Timeline Posts Available.",
-                        status: true,
-                        data: [],
                   });
             }
 
@@ -757,7 +698,7 @@ const getUserTimeline = asyncHandler(async (req, res) => {
 
             // Add the base URL to the pic field in user details and handle likes and subscriptions
             const updatedTimelines = await Promise.all(
-                  timelines.map(async (timeline) => {
+                  paginatedTimelines.map(async (timeline) => {
                         let like_status = "No"; // Move the declaration inside the loop
                         let subscribe_status = "No"; // Move the declaration inside the loop
                         const likeCount = await getTimelineLikeCount(
@@ -801,6 +742,117 @@ const getUserTimeline = asyncHandler(async (req, res) => {
             res.json({
                   message: "Timeline posts fetched successfully.",
                   status: true,
+                  hasMore,
+                  data: updatedTimelines,
+            });
+      } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                  message: "Internal Server Error",
+                  status: false,
+            });
+      }
+});
+
+const getUserTimeline = asyncHandler(async (req, res) => {
+      const { user_id, page } = req.params;
+      const limit = parseInt(req.query.limit) || 5;
+      const startIndex = (page - 1) * limit;
+
+      try {
+            const category_id = req.body.category_id; // Extract category_id from query parameters
+            const search = req.body.search; // Extract search term from query parameters
+
+            // Construct the query based on category_id, search term, and deleted_at: null
+            const query = {
+                  user_id,
+                  deleted_at: null, // Include only posts where deleted_at is null
+            };
+
+            if (category_id) {
+                  query.category_id = category_id; // Filter by category_id if provided
+            }
+
+            if (search) {
+                  query.title = { $regex: search, $options: "i" }; // Search by title if search term provided
+            }
+
+            // Fetch paginated Timelines from the database based on the constructed query
+            const paginatedTimelines = await PostTimeline.find(query)
+                  .skip(startIndex)
+                  .sort({ _id: -1 })
+                  .limit(limit)
+                  .populate({
+                        path: "user_id",
+                        select: "first_name last_name pic",
+                  })
+                  .populate({
+                        path: "category_id",
+                        select: "category_name",
+                  });
+
+            // Calculate totalTimelines with the applied filters
+            const totalTimelines = await PostTimeline.countDocuments(query);
+
+            const hasMore =
+                  startIndex + paginatedTimelines.length < totalTimelines;
+
+            if (paginatedTimelines.length === 0) {
+                  return res.json({
+                        message: "Timeline Post Not Found",
+                        status: true,
+                  });
+            }
+
+            const token = req.header("Authorization");
+
+            // Add the base URL to the pic field in user details and handle likes and subscriptions
+            const updatedTimelines = await Promise.all(
+                  paginatedTimelines.map(async (timeline) => {
+                        let like_status = "No"; // Move the declaration inside the loop
+                        let subscribe_status = "No"; // Move the declaration inside the loop
+                        const likeCount = await getTimelineLikeCount(
+                              timeline._id
+                        );
+
+                        if (token) {
+                              // Check if the user has liked the current post
+                              const isLiked = await PostTimelineLike.exists({
+                                    post_timeline_id: timeline._id,
+                                    user_ids: req.user._id,
+                              });
+
+                              // Set like_status based on whether the user has liked the post
+                              like_status = isLiked ? "Yes" : "No";
+
+                              const issubscribe = await Subscribes.exists({
+                                    my_id: timeline.user_id._id,
+                                    subscriber_id: req.user._id,
+                              });
+
+                              // Set subscribe_status based on whether the user has subscribed to the author
+                              subscribe_status = issubscribe ? "Yes" : "No";
+                        }
+                        const pic_name_url = await getSignedUrlS3(
+                              timeline.user_id.pic
+                        );
+                        return {
+                              ...timeline._doc,
+                              user_id: {
+                                    ...timeline.user_id._doc,
+                                    pic: pic_name_url, // Assuming "pic" is the field in your User schema that contains the URL
+                              },
+                              like_count: likeCount,
+                              like_status: like_status,
+                              subscribe_status: subscribe_status,
+                        };
+                  })
+            );
+
+            res.json({
+                  message: "Timeline posts fetched successfully.",
+                  status: true,
+                  hasMore,
                   data: updatedTimelines,
             });
       } catch (error) {

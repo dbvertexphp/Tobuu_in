@@ -379,7 +379,7 @@ const verifyOtp = asyncHandler(async (req, res) => {
             );
 
             if (result.nModified > 0) {
-                   console.log("OTP verification status updated successfully.");
+                  console.log("OTP verification status updated successfully.");
             } else {
                   console.log(
                         "No matching user found or OTP verification status already set."

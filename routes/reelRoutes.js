@@ -54,7 +54,7 @@ reelRoutes
 reelRoutes
       .route("/getUserReelsWebsite/")
       .post(commonProtect, getUserReelsWebsite);
-reelRoutes.route("/getMyReels").get(protect, getMyReels);
+reelRoutes.route("/getMyReels/:page").get(protect, getMyReels);
 reelRoutes.route("/getMyReel_ByCategory").post(protect, getMyReel_ByCategory);
 reelRoutes.route("/getMyReelsWebsite/:page").post(protect, getMyReelsWebsite);
 reelRoutes.route("/getReelsUploadUrlS3").get(protect, getReelsUploadUrlS3);
