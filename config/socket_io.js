@@ -17,12 +17,12 @@ const createSocketIO = (server) => {
       const connectedUsers = {};
 
       io.on("connection", (socket) => {
-            //console.log("Connected to socket.io");
+            //   console.log("Connected to socket.io", socket.id);
 
             socket.on("setup", (userData) => {
                   socket.join(userData._id);
                   socket.emit("connected");
-
+                  // console.log("connected", userData._id);
                   // Emit online status for the connected user
                   io.emit("user online", {
                         userId: userData._id,
@@ -31,17 +31,17 @@ const createSocketIO = (server) => {
             });
 
             socket.on("join chat", (room) => {
-                  console.log("join chat room");
+                  //console.log("join chat room", room);
                   socket.join(room);
             });
 
             socket.on("typing", (data) => {
-                  console.log("typing");
+                  //console.log("typing");
                   socket.in(data.chatData.room).emit("typing");
             });
 
             socket.on("stop typing", (room) => {
-                  console.log("stop typing");
+                  //console.log("stop typing");
                   socket.in(room).emit("stop typing");
             });
 
@@ -52,9 +52,6 @@ const createSocketIO = (server) => {
 
             socket.on("new message", (newMessageRecieved) => {
                   try {
-                        console.log(
-                              "new message" + JSON.stringify(newMessageRecieved)
-                        );
                         var chat = newMessageRecieved.response.chat;
                         var room_id = newMessageRecieved.response.chat._id;
                         if (!chat || !chat.users) {
@@ -84,7 +81,7 @@ const createSocketIO = (server) => {
                   const userId = Object.keys(socket.rooms).find(
                         (room) => room !== socket.id
                   );
-
+                  // console.log("disconnect", socket.id);
                   if (userId) {
                         // Emit online status for the disconnected user
                         io.emit("user online", { userId, online: false });

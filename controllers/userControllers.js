@@ -543,6 +543,7 @@ const profilePicKey = asyncHandler(async (req, res) => {
 const updateProfileData = asyncHandler(async (req, res) => {
       const { interest, about_me, last_name, first_name, dob, address } =
             req.body;
+
       const userId = req.user._id; // Assuming you have user authentication middleware
 
       try {

@@ -43,7 +43,7 @@ videoRoutes.route("/getVideosThumbnails/:limit").post(getVideosThumbnails);
 videoRoutes
       .route("/getUserVideos/:user_id/:page")
       .get(commonProtect, getUserVideos);
-videoRoutes.route("/getMyVideos/:limit").get(protect, getMyVideos);
+videoRoutes.route("/getMyVideos/:page").get(protect, getMyVideos);
 videoRoutes.route("/getVideoUploadUrlS3").get(protect, getVideoUploadUrlS3);
 videoRoutes.route("/ViewCountAdd").post(protect, ViewCountAdd);
 

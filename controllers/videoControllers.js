@@ -804,6 +804,11 @@ const getMyVideos = asyncHandler(async (req, res) => {
                         select: "category_name", // Adjust this field based on your Category schema
                   });
 
+            const totalVideos = await Video.countDocuments({
+                  user_id,
+                  deleted_at: null,
+            });
+            const hasMore = startIndex + videos.length < totalVideos;
             // Check if there are no videos
             if (!videos || videos.length === 0) {
                   return res.json({
@@ -863,7 +868,10 @@ const getMyVideos = asyncHandler(async (req, res) => {
             res.json({
                   message: "Videos fetched successfully.",
                   status: true,
+                  hasMore,
                   data: updatedVideos,
+                  page: page, // Add current page number to response
+                  total_pages: Math.ceil(videos.length / limit), // Calculate total pages based on total videos and limit
             });
       } catch (error) {
             console.error(error);
@@ -892,7 +900,10 @@ const getUserVideos = asyncHandler(async (req, res) => {
                         select: "category_name",
                   });
 
-            const userVideoCount = await Video.countDocuments({ user_id });
+            const userVideoCount = await Video.countDocuments({
+                  user_id,
+                  deleted_at: null,
+            });
 
             const hasMore = startIndex + videos.length < userVideoCount;
             // Check if there are no videos
