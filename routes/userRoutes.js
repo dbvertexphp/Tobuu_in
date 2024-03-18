@@ -31,6 +31,7 @@ const {
       getBankDetailsAdmin,
       updateUserWatchTime,
       UserAdminStatus,
+      ManullyListUpdate,
 } = require("../controllers/userControllers.js");
 const {
       CreateCalendar,
@@ -58,6 +59,7 @@ userRoutes.route("/resendOTP").post(resendOTP);
 userRoutes.route("/ForgetresendOTP").post(ForgetresendOTP);
 userRoutes.route("/forgetPassword").put(forgetPassword);
 userRoutes.route("/searchUsers").post(searchUsers);
+userRoutes.route("/ManullyListUpdate").get(ManullyListUpdate);
 userRoutes.route("/getAllUsersWebsite").post(commonProtect, getAllUsersWebsite);
 /*------------- Comman Auth Routes --------------------- */
 userRoutes.route("/getUserView/:_id/").get(commonProtect, getUserView);
@@ -65,6 +67,7 @@ userRoutes.route("/getUserView/:_id/").get(commonProtect, getUserView);
 /*------------- Auth Routes --------------------- */
 
 userRoutes.route("/").get(protect, getUsers);
+
 userRoutes.route("/logoutUser").get(protect, logoutUser);
 userRoutes.route("/updateUserProfile").put(protect, updateProfileData);
 userRoutes.route("/ChangePassword").put(protect, ChangePassword);

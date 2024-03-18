@@ -1601,6 +1601,20 @@ const updateUserWatchTime = async (req, res) => {
       }
 };
 
+const ManullyListUpdate = asyncHandler(async (req, res) => {
+      try {
+            // Sabhi users ko 0 subscribe karne ke liye 'subscribe' field ko update karo
+            const result = await User.updateMany({}, { subscribe: 0 });
+
+            // Success response
+            res.json({ message: "Subscriptions updated successfully" });
+      } catch (error) {
+            // Error handling
+            console.error("Error updating subscriptions:", error);
+            res.status(500).json({ error: "Error updating subscriptions" });
+      }
+});
+
 module.exports = {
       getUsers,
       registerUser,
@@ -1633,4 +1647,5 @@ module.exports = {
       getAllUsersWebsite,
       updateUserWatchTime,
       UserAdminStatus,
+      ManullyListUpdate,
 };

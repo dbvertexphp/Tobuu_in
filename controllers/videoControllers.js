@@ -826,7 +826,7 @@ const getMyVideos = asyncHandler(async (req, res) => {
                         const likeCount = await getVideoLikeCount(video._id);
                         // Check if the user has liked the current post
                         const isLiked = await VideoLike.exists({
-                              post_timeline_id: video._id,
+                              video_id: video._id,
                               user_ids: req.user._id,
                         });
 
