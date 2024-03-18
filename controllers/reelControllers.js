@@ -842,7 +842,6 @@ const getMyReels = asyncHandler(async (req, res) => {
 
             const hasMore = startIndex + paginatedReels.length < totalReels;
 
-
             if (paginatedReels.length === 0) {
                   return res.json({
                         message: "Reels Not Found",
@@ -863,7 +862,7 @@ const getMyReels = asyncHandler(async (req, res) => {
                         if (token) {
                               // Check if the user has liked the current post
                               const isLiked = await ReelLike.exists({
-                                    post_timeline_id: reel._id,
+                                    reel_id: reel._id,
                                     user_ids: req.user._id,
                               });
 
@@ -1006,7 +1005,7 @@ const getUserReels = asyncHandler(async (req, res) => {
                         if (token) {
                               // Check if the user has liked the current post
                               const isLiked = await ReelLike.exists({
-                                    post_timeline_id: reel._id,
+                                    reel_id: reel._id,
                                     user_ids: req.user._id,
                               });
 
@@ -1443,7 +1442,7 @@ const getUserReelsWebsite = asyncHandler(async (req, res) => {
 
                         if (req.user) {
                               const isLiked = await ReelLike.exists({
-                                    post_timeline_id: reel._id,
+                                    reel_id: reel._id,
                                     user_ids: req.user._id,
                               });
 
@@ -1856,6 +1855,7 @@ const getReelThumbnailsHome = asyncHandler(async (category_id) => {
 
             // Fetch thumbnails based on the limit and category_id (if provided)
             const thumbnails = await Reel.find(query)
+                  .sort({ view_count: -1 })
                   .limit(limit)
                   .select("thumbnail_name title reel_name")
                   .exec();

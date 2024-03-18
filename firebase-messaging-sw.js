@@ -1,7 +1,3 @@
-// This a service worker file for receiving push notifitications.
-// See `Access registration token section` @ https://firebase.google.com/docs/cloud-messaging/js/client#retrieve-the-current-registration-token
-
-// Scripts for firebase and firebase messaging
 importScripts("https://www.gstatic.com/firebasejs/8.2.0/firebase-app.js");
 importScripts("https://www.gstatic.com/firebasejs/8.2.0/firebase-messaging.js");
 
@@ -23,13 +19,23 @@ const messaging = firebase.messaging();
 
 // Handle incoming messages while the app is not in focus (i.e in the background, hidden behind other tabs, or completely closed).
 messaging.onBackgroundMessage(function (payload) {
-      const notificationTitle = payload.notification.title;
+      const notificationTitle = payload.data.title;
       const notificationOptions = {
-            body: payload.notification.body,
+            body: payload.data.body,
+            image: payload.data.image, // Add image if available
       };
 
-      self.registration.showNotification(
+      return self.registration.showNotification(
             notificationTitle,
             notificationOptions
       );
+});
+
+// Handle notification click event
+self.addEventListener("notificationclick", function (event) {
+      const notification = event.notification;
+      const url = notification.data.url; // Extract dynamic URL from notification data payload
+
+      // Redirect to the specified URL
+      event.waitUntil(clients.openWindow(url));
 });

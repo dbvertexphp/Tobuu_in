@@ -1106,6 +1106,7 @@ const getPaginatedTimelineHome = asyncHandler(async (category_id) => {
 
             // Fetch paginated Timelines from the database based on the constructed query
             const paginatedTimelines = await PostTimeline.find(query)
+                  .sort({ _id: -1 })
                   .skip(startIndex)
                   .limit(limit)
                   .populate({

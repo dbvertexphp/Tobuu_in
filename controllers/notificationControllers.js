@@ -10,16 +10,21 @@ const {
 } = require("../models/adminnotificationsmodel.js");
 const asyncHandler = require("express-async-handler");
 const moment = require("moment-timezone");
+const baseURL = process.env.BASE_URL;
 admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
 });
 
-const sendFCMNotification = (registrationToken, title, body, imageUrl) => {
+const sendFCMNotification = (registrationToken, title, body, imageUrl, url) => {
       const message = {
             notification: {
                   title,
                   body,
                   image: imageUrl, // Add the image URL here
+            },
+            data: {
+                  // Add data payload here
+                  url: url, // Dynamic URL to be sent with the notification
             },
             token: registrationToken,
       };
@@ -72,13 +77,25 @@ const createNotification = async (
 
             const currentTime = moment().tz("Asia/Kolkata");
             const datetime = currentTime.format("DD-MM-YYYY HH:mm:ss");
+            let url;
+            if (type == "Friend_Request" || type == "Request_Accept") {
+                  url = baseURL + "website-friend-list";
+            } else if (
+                  type == "Payment" ||
+                  type == "Completed" ||
+                  type == "Review"
+            ) {
+                  url = baseURL + "website-hire-list";
+            } else if (type == "Applied_Job") {
+                  url = baseURL + "website-my-job-list";
+            }
 
-            // Call sendFCMNotification with the constructed parameters
             await sendFCMNotification(
                   websiteToken.token,
                   title,
                   body,
-                  imageUrl
+                  imageUrl,
+                  url
             );
 
             // Optionally, save the notification to the database
@@ -143,7 +160,6 @@ const createNotificationAdmin = async (
             const currentTime = moment().tz("Asia/Kolkata");
             const datetime = currentTime.format("DD-MM-YYYY HH:mm:ss");
 
-            // Call sendFCMNotification with the constructed parameters
             await sendFCMNotification(
                   websiteToken.token,
                   title,
@@ -168,7 +184,6 @@ const createNotificationAdmin = async (
 };
 
 module.exports = {
-      sendFCMNotification,
       createNotification,
       createNotificationAdmin,
 };

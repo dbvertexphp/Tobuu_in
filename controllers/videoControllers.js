@@ -211,6 +211,7 @@ const getPaginatedVideos = asyncHandler(async (req, res) => {
 
             // Use Mongoose to fetch paginated videos from the database
             const paginatedVideos = await videoQuery
+                  .sort({ view_count: -1 })
                   .skip(startIndex)
                   .limit(limit)
                   .populate({
@@ -924,7 +925,7 @@ const getUserVideos = asyncHandler(async (req, res) => {
 
                         if (token) {
                               const isLiked = await VideoLike.exists({
-                                    post_timeline_id: video._id,
+                                    video_id: video._id,
                                     user_ids: req.user._id,
                               });
                               like_status = isLiked ? "Yes" : "No";
@@ -1258,6 +1259,7 @@ const getVideoThumbnailsHome = asyncHandler(async (category_id) => {
 
             const query = category_id ? { category_id } : {};
             const videos = await Video.find({ ...query, deleted_at: null })
+                  .sort({ view_count: -1 })
                   .limit(limit)
                   .select("thumbnail_name video_name title");
 
