@@ -103,7 +103,7 @@ const AcceptFriendRequest = asyncHandler(async (req, res) => {
                         {
                               $set: {
                                     type: "Request_Accept",
-                                    message: "Accept Club Request",
+                                    message: "Your request has been accepted",
                               },
                         },
                         { new: true }
