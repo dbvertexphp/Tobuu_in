@@ -884,9 +884,10 @@ const getMyVideos = asyncHandler(async (req, res) => {
 });
 
 const getUserVideos = asyncHandler(async (req, res) => {
-      const { user_id, page } = req.params;
+      const { user_id, pageNumber } = req.params;
       const limit = parseInt(req.query.limit) || 5;
-      const startIndex = (page - 1) * limit;
+      const startIndex = (pageNumber - 1) * limit;
+
       try {
             // Fetch videos from the database for the given user_id with pagination
             const videos = await Video.find({ user_id, deleted_at: null })

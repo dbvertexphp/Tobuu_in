@@ -17,7 +17,7 @@ const {
       getPaginatedVideosAdmin,
       VideoAdminStatus,
       ViewCountAdd,
-      VideoViewUserList
+      VideoViewUserList,
 } = require("../controllers/videoControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
@@ -41,8 +41,8 @@ videoRoutes.route("/getAllVideo/:page").post(commonProtect, getAllVideo);
 videoRoutes.route("/streamVideo/:videoId").get(streamVideo);
 videoRoutes.route("/getVideosThumbnails/:limit").post(getVideosThumbnails);
 videoRoutes
-      .route("/getUserVideos/:user_id/:page")
-      .get(commonProtect, getUserVideos);
+      .route("/getUserVideos/:user_id/:pageNumber")
+      .get(protect, getUserVideos);
 videoRoutes.route("/getMyVideos/:page").get(protect, getMyVideos);
 videoRoutes.route("/getVideoUploadUrlS3").get(protect, getVideoUploadUrlS3);
 videoRoutes.route("/ViewCountAdd").post(protect, ViewCountAdd);
