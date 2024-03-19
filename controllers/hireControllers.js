@@ -37,6 +37,7 @@ const getHireListByUserId = asyncHandler(async (req, res) => {
       const user_id = req.user._id;
       try {
             const hireList = await Hire.find({ user_id })
+                  .sort({ _id: -1 })
                   .populate({
                         path: "hire_id",
                         select: ["first_name", "last_name", "pic"],
@@ -137,6 +138,7 @@ const getHireByMe = asyncHandler(async (req, res) => {
 
       try {
             const hireList = await Hire.find({ hire_id })
+                  .sort({ _id: -1 })
                   .populate({
                         path: "user_id",
                         select: ["first_name", "last_name", "pic"],
