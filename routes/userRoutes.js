@@ -58,7 +58,7 @@ userRoutes.route("/verifyOtp").post(verifyOtp);
 userRoutes.route("/resendOTP").post(resendOTP);
 userRoutes.route("/ForgetresendOTP").post(ForgetresendOTP);
 userRoutes.route("/forgetPassword").put(forgetPassword);
-userRoutes.route("/searchUsers").post(searchUsers);
+
 userRoutes.route("/ManullyListUpdate").get(ManullyListUpdate);
 userRoutes.route("/getAllUsersWebsite").post(commonProtect, getAllUsersWebsite);
 /*------------- Comman Auth Routes --------------------- */
@@ -70,6 +70,7 @@ userRoutes.route("/").get(protect, getUsers);
 
 userRoutes.route("/logoutUser").get(protect, logoutUser);
 userRoutes.route("/updateUserProfile").put(protect, updateProfileData);
+userRoutes.route("/searchUsers").post(protect, searchUsers);
 userRoutes.route("/ChangePassword").put(protect, ChangePassword);
 userRoutes.route("/profilePicUpload").put(protect, profilePicUpload);
 userRoutes.route("/bankdetailsUpload").post(protect, bank_Detail_create);

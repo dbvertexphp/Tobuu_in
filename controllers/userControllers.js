@@ -904,7 +904,7 @@ const getAllUsersWebsite = asyncHandler(async (req, res) => {
 const searchUsers = asyncHandler(async (req, res) => {
       const { page = 1, name = "" } = req.body;
       const perPage = 4; // Aap apni requirements ke hisab se isay adjust kar sakte hain
-
+      const my_id = req.user._id;
       try {
             let query = {
                   $or: [
@@ -912,7 +912,7 @@ const searchUsers = asyncHandler(async (req, res) => {
                         { username: { $regex: name, $options: "i" } },
                   ],
             };
-
+            console.log(my_id);
             // Agar req.user._id available hai, toh user ka data exclude karein
             if (req.user && req.user._id) {
                   query._id = { $ne: req.user._id };
