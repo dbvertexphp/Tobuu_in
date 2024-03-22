@@ -58,8 +58,9 @@ const createSocketIO = (server) => {
       const connectedUsers = {};
 
       io.on("connection", (socket) => {
-            socket.on("setup", async (userData, status, HeaderId) => {
-                  console.log(userData._id, status);
+            socket.on("setup", async (userData, HeaderId) => {
+                  const status = userData.ChatStatus;
+                  console.log(userData);
                   socket.join(userData._id);
                   socket.emit("connected");
 
