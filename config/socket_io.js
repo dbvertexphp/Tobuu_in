@@ -59,6 +59,7 @@ const createSocketIO = (server) => {
 
       io.on("connection", (socket) => {
             socket.on("setup", async (userData, status, HeaderId) => {
+                  console.log(userData._id, status);
                   socket.join(userData._id);
                   socket.emit("connected");
 
@@ -68,7 +69,7 @@ const createSocketIO = (server) => {
                         Chat_Status = "Offline";
                   }
 
-                  console.log(Chat_Status); // Log Chat_Status after awaiting getChatStatusById
+                  // Log Chat_Status after awaiting getChatStatusById
 
                   if (status) {
                         // If status is true, set Chat_Status to Online and emit user online event
