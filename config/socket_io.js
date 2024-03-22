@@ -2,9 +2,50 @@
 
 const { Server } = require("socket.io");
 const http = require("http");
+const { User } = require("../models/userModel");
 
 // Initialize Socket.IO server
 // Import necessary libraries and set up your HTTP server
+
+const getChatStatusById = async (userId) => {
+      try {
+            // Search for user by userId
+            const user = await User.findById(userId);
+            if (user) {
+                  // If user found, return Chat_Status
+                  return user.Chat_Status;
+            } else {
+                  // If user not found, return null or any default value
+                  return null;
+            }
+      } catch (error) {
+            // Handle error if any
+            console.error("Error fetching user:", error);
+            return null;
+      }
+};
+
+const updateChatStatus = async (userId, newStatus) => {
+      try {
+            // Search for user by userId and update Chat_Status
+            const user = await User.findByIdAndUpdate(
+                  userId,
+                  { Chat_Status: newStatus },
+                  { new: true } // To return updated user document
+            );
+            if (user) {
+                  // If user found and Chat_Status updated successfully, return updated Chat_Status
+                  return user.Chat_Status;
+            } else {
+                  // If user not found or Chat_Status not updated, return null or any default value
+                  return null;
+            }
+      } catch (error) {
+            // Handle error if any
+            console.error("Error updating Chat_Status:", error);
+            return null;
+      }
+};
 
 const createSocketIO = (server) => {
       const io = new Server(server, {
@@ -17,17 +58,35 @@ const createSocketIO = (server) => {
       const connectedUsers = {};
 
       io.on("connection", (socket) => {
-            //   console.log("Connected to socket.io", socket.id);
-
-            socket.on("setup", (userData) => {
+            socket.on("setup", async (userData, status, HeaderId) => {
                   socket.join(userData._id);
                   socket.emit("connected");
-                  // console.log("connected", userData._id);
-                  // Emit online status for the connected user
-                  io.emit("user online", {
-                        userId: userData._id,
-                        online: true,
-                  });
+
+                  let Chat_Status = await getChatStatusById(HeaderId); // Await getChatStatusById
+                  if (!Chat_Status) {
+                        // If Chat_Status not found by HeaderId, set it to Offline by default
+                        Chat_Status = "Offline";
+                  }
+
+                  console.log(Chat_Status); // Log Chat_Status after awaiting getChatStatusById
+
+                  if (status) {
+                        // If status is true, set Chat_Status to Online and emit user online event
+                        await updateChatStatus(userData._id, "Online");
+                        io.emit("user online", {
+                              userId: userData._id,
+                              online: status,
+                              Chat_Status: Chat_Status,
+                        });
+                  } else {
+                        // If status is false, set Chat_Status to Offline and emit user online event
+                        await updateChatStatus(userData._id, "Offline");
+                        io.emit("user online", {
+                              userId: userData._id,
+                              online: status,
+                              Chat_Status: Chat_Status,
+                        });
+                  }
             });
 
             socket.on("join chat", (room) => {

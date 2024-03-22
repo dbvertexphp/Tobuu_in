@@ -1651,7 +1651,7 @@ const getReelsUploadUrlS3 = asyncHandler(async (req, res) => {
 
       return res.status(200).json({
             message: { videoget_url, thumbnailget_url },
-            status: false,
+            status: true,
       });
 });
 

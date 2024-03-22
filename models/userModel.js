@@ -25,6 +25,7 @@ const userSchema = mongoose.Schema({
       subscribe: { type: Number, default: 0 },
       interest: [{ type: String }],
       about_me: { type: String },
+      Chat_Status: { type: String, default: "Offline" },
       address: { type: String },
       dob: { type: Date },
       pic: {
