@@ -117,11 +117,14 @@ const sendMessage = asyncHandler(async (req, res) => {
             return res.sendStatus(500);
       }
 
+      const currentTime = moment().tz("Asia/Kolkata");
+      const datetime = currentTime.format("DD-MM-YYYY hh:mm:ss");
+
       const newMessage = {
             sender: req.user._id,
             content: content,
             chat: chatId,
-            datetime: moments().format("DD-MM-YYYY HH:mm:ss"),
+            datetime: datetime,
       };
 
       try {

@@ -60,7 +60,6 @@ const createSocketIO = (server) => {
       io.on("connection", (socket) => {
             socket.on("setup", async (userData, HeaderId) => {
                   const status = userData.ChatStatus;
-                  console.log(userData);
                   socket.join(userData._id);
                   socket.emit("connected");
 
