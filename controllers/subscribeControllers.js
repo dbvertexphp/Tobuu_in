@@ -101,9 +101,18 @@ const UnsubscribeRequest = asyncHandler(async (req, res) => {
 
             // Remove subscriber_id from the subscribers list
             subscribes.subscriber_id.splice(subscriberIndex, 1);
-
             // Save the updated Subscribes document
             await subscribes.save();
+
+            let subscriberCount = await User.findOne({ _id: subscriber_id });
+            if (subscriberCount && subscriberCount.subscribe > 0) {
+                  subscriberCount.subscribe -= 1; // Decrementing the subscribe count
+            }
+
+            const result = await User.updateOne(
+                  { _id: subscriber_id },
+                  { $set: { subscribe: subscriberCount.subscribe } }
+            );
 
             res.status(200).json({
                   status: true,
