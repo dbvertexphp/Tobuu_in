@@ -1067,21 +1067,29 @@ const getPaginatedReelWebsite = asyncHandler(async (req, res) => {
 
       try {
             let reeldQuery = Reel.find({ deleted_at: null });
-
+            let totalReels;
+            const category_id = req.body.category_id;
+            const search = req.body.search;
             if (req.body.category_id) {
                   reeldQuery = reeldQuery.where({
                         category_id: req.body.category_id,
                   });
-            }
-
-            if (req.body.search) {
+                  totalReels = await Reel.countDocuments({
+                        category_id,
+                        deleted_at: null,
+                  });
+            } else if (req.body.search) {
                   reeldQuery = reeldQuery.where({
                         title: { $regex: req.body.search, $options: "i" },
                   });
-            }
-
-            if (share_Id !== 1) {
+                  totalReels = await Reel.countDocuments({
+                        title: { $regex: req.body.search, $options: "i" },
+                        deleted_at: null,
+                  });
+            } else if (share_Id !== 1) {
                   reeldQuery = reeldQuery.where({ share_Id: share_Id });
+            } else {
+                  totalReels = await Reel.countDocuments();
             }
 
             // Agar share_Id 1 hai, toh kuch nahi karna, waisa hi chalne dena
@@ -1099,7 +1107,6 @@ const getPaginatedReelWebsite = asyncHandler(async (req, res) => {
                         select: "category_name",
                   });
 
-            const totalReels = await Reel.countDocuments();
             const hasMore = startIndex + paginatedReels.length < totalReels;
 
             if (paginatedReels.length === 0) {
@@ -1107,6 +1114,7 @@ const getPaginatedReelWebsite = asyncHandler(async (req, res) => {
                         message: "Reels Not Found",
                         status: true,
                         data: [],
+                        hasMore: false,
                   });
             }
 
