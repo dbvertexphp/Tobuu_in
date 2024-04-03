@@ -117,7 +117,7 @@ const fetchChats = asyncHandler(async (req, res) => {
                   .populate({
                         path: "latestMessage",
                   })
-                  .sort({ updatedAt: -1, "latestMessage.datetime": -1 })
+                  .sort({ "updatedAt": -1 })
                   .skip(skip)
                   .limit(pageSize);
 

@@ -68,9 +68,6 @@ const createSocketIO = (server) => {
                         // If Chat_Status not found by HeaderId, set it to Offline by default
                         Chat_Status = "Offline";
                   }
-
-                  // Log Chat_Status after awaiting getChatStatusById
-
                   if (status) {
                         // If status is true, set Chat_Status to Online and emit user online event
                         await updateChatStatus(userData._id, "Online");
