@@ -3,7 +3,6 @@
 const { Server } = require("socket.io");
 const http = require("http");
 const { User } = require("../models/userModel");
-
 // Initialize Socket.IO server
 // Import necessary libraries and set up your HTTP server
 
@@ -62,7 +61,7 @@ const createSocketIO = (server) => {
                   const status = userData.ChatStatus;
                   socket.join(userData._id);
                   socket.emit("connected");
-
+                  socket.emit("serverEvent", userData);
                   let Chat_Status = await getChatStatusById(HeaderId); // Await getChatStatusById
                   if (!Chat_Status) {
                         // If Chat_Status not found by HeaderId, set it to Offline by default
@@ -135,6 +134,7 @@ const createSocketIO = (server) => {
 
             socket.on("disconnect", () => {
                   // Get the user ID of the disconnected user
+                  delete connectedUsers[socket.id];
                   const userId = Object.keys(socket.rooms).find(
                         (room) => room !== socket.id
                   );

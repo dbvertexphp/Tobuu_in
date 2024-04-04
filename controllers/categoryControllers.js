@@ -1,5 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Category = require("../models/categoryModel.js");
+require("dotenv").config();
+const baseURL = process.env.BASE_URL;
 
 const Createcategory = asyncHandler(async (req, res) => {
       const { category_name } = req.body;
@@ -83,36 +85,21 @@ const GetAllCategories = asyncHandler(async (req, res) => {
                   });
             }
 
-            // Find the "All" category, if it exists
-            const allCategory = categories.find(
-                  (category) => category.category_name.toLowerCase() === "All"
-            );
+            // Sort the categories alphabetically
+            const sortedCategories = categories.sort((a, b) => {
+                  // "All" category should be at the top
+                  if (a.category_name.toLowerCase() === "all") return -1;
+                  if (b.category_name.toLowerCase() === "all") return 1;
 
-            // Remove the "All" category from the original array, if it exists
-            const categoriesWithoutAll = allCategory
-                  ? categories.filter(
-                          (category) =>
-                                category.category_name.toLowerCase() !== "All"
-                    )
-                  : categories;
+                  // "Other" category should be at the bottom
+                  if (a.category_name.toLowerCase() === "other") return 1;
+                  if (b.category_name.toLowerCase() === "other") return -1;
 
-            // Sort the remaining categories alphabetically
-            const sortedCategories = categoriesWithoutAll.sort((a, b) => {
-                  if (a.category_name.toLowerCase() === "other") {
-                        return 1; // Move "Other" to the end
-                  } else if (b.category_name.toLowerCase() === "other") {
-                        return -1; // Keep "Other" at the end
-                  } else {
-                        return a.category_name.localeCompare(b.category_name);
-                  }
+                  // Sort alphabetically for other categories
+                  return a.category_name.localeCompare(b.category_name);
             });
 
-            // If "All" category exists, add it to the beginning of the sorted array
-            const finalCategories = allCategory
-                  ? [allCategory, ...sortedCategories]
-                  : sortedCategories;
-
-            res.status(200).json(finalCategories);
+            res.status(200).json(sortedCategories);
       } catch (error) {
             console.error("Error fetching categories:", error);
             res.status(500).json({
@@ -208,6 +195,74 @@ const GetSingleCategoryByName = asyncHandler(async (req, res) => {
       }
 });
 
+const GetAllCategoriesAdminpage = asyncHandler(async (req, res) => {
+      const { page = 1 } = req.body;
+      const perPage = 10; // Number of documents to display per page
+
+      // Calculate the number of documents to skip
+      const skip = (page - 1) * perPage;
+
+      try {
+            // Fetch all categories from the database
+            const categories = await Category.aggregate([
+                  {
+                        $project: {
+                              category_name: 1,
+                              createdAt: 1,
+                              updatedAt: 1,
+                              datetime: 1,
+                              isOther: {
+                                    $cond: [
+                                          { $eq: ["$category_name", "Other"] },
+                                          1,
+                                          0,
+                                    ],
+                              },
+                        },
+                  },
+                  { $sort: { isOther: 1, category_name: 1 } },
+                  { $skip: skip }, // Skip documents based on pagination
+                  { $limit: perPage }, // Limit the number of documents per page
+            ]);
+
+            if (!categories || categories.length === 0) {
+                  return res.status(404).json({
+                        message: "No categories found.",
+                        status: false,
+                  });
+            }
+
+            // Map categories to remove the 'isOther' property
+            const sanitizedCategories = categories.map((category) => {
+                  const { isOther, ...rest } = category;
+                  return rest;
+            });
+
+            // Filter out the "All" category from the categories array
+            const filteredCategories = sanitizedCategories.filter(
+                  (category) => category.category_name !== "All" // Replace this ID with the actual ID of "All" category
+            );
+
+            const totalCount = await Category.countDocuments(); // Total count of documents
+            const totalPages = Math.ceil(totalCount / perPage); // Total pages
+
+            const paginationDetails = {
+                  current_page: page,
+                  data: filteredCategories,
+                  total_pages: totalPages,
+                  total_count: totalCount,
+            };
+
+            res.status(200).json(paginationDetails);
+      } catch (error) {
+            console.error("Error fetching categories:", error);
+            res.status(500).json({
+                  message: "Internal Server Error.",
+                  status: false,
+            });
+      }
+});
+
 module.exports = {
       Createcategory,
       GetAllCategories,
@@ -215,4 +270,5 @@ module.exports = {
       GetSingleCategoryByName,
       GetAllCategoriesAdmin,
       UpdateCategory,
+      GetAllCategoriesAdminpage,
 };

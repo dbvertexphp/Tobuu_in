@@ -16,9 +16,11 @@ firebase.initializeApp(firebaseConfig);
 
 // Retrieve firebase messaging
 const messaging = firebase.messaging();
+const channel = new BroadcastChannel("notificationChannel");
 
 // Handle incoming messages while the app is not in focus (i.e in the background, hidden behind other tabs, or completely closed).
 messaging.onBackgroundMessage(function (payload) {
+      channel.postMessage({ type: "notificationReceived", payload: payload });
       const notificationTitle = payload.data.title;
       const notificationOptions = {
             body: payload.data.body,

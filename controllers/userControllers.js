@@ -912,7 +912,7 @@ const searchUsers = asyncHandler(async (req, res) => {
                         { username: { $regex: name, $options: "i" } },
                   ],
             };
-            console.log(my_id);
+
             // Agar req.user._id available hai, toh user ka data exclude karein
             if (req.user && req.user._id) {
                   query._id = { $ne: req.user._id };
