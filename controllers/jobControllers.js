@@ -351,14 +351,19 @@ const getAppliedJobs = asyncHandler(async (req, res) => {
       try {
             let appliedJobsQuery = AppliedUser.find({
                   user_ids: user_id,
-            }).populate({
-                  path: "job_id",
-                  match: { deleted_at: null }, // Filter to retrieve only job_id documents with deleted_at as null
-                  populate: [
-                        { path: "category_id", select: "category_name" },
-                        { path: "user_id", select: "first_name pic last_name" },
-                  ],
-            });
+            })
+                  .sort({ _id: -1 })
+                  .populate({
+                        path: "job_id",
+                        match: { deleted_at: null }, // Filter to retrieve only job_id documents with deleted_at as null
+                        populate: [
+                              { path: "category_id", select: "category_name" },
+                              {
+                                    path: "user_id",
+                                    select: "first_name pic last_name",
+                              },
+                        ],
+                  });
 
             // Apply category filter if category_id is provided
             if (category_id) {

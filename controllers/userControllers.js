@@ -903,8 +903,7 @@ const getAllUsersWebsite = asyncHandler(async (req, res) => {
 
 const searchUsers = asyncHandler(async (req, res) => {
       const { page = 1, name = "" } = req.body;
-      const perPage = 4; // Aap apni requirements ke hisab se isay adjust kar sakte hain
-      const my_id = req.user._id;
+      const perPage = 4; // Adjust according to your requirements
       try {
             let query = {
                   $or: [
@@ -913,7 +912,29 @@ const searchUsers = asyncHandler(async (req, res) => {
                   ],
             };
 
-            // Agar req.user._id available hai, toh user ka data exclude karein
+            // If name contains a space, search for the last name as well
+            if (name.includes(" ")) {
+                  const [firstName, lastName] = name.split(" ");
+                  query = {
+                        $or: [
+                              {
+                                    first_name: {
+                                          $regex: firstName,
+                                          $options: "i",
+                                    },
+                              },
+                              {
+                                    last_name: {
+                                          $regex: lastName,
+                                          $options: "i",
+                                    },
+                              },
+                              { username: { $regex: name, $options: "i" } },
+                        ],
+                  };
+            }
+
+            // Exclude the current user if req.user._id is available
             if (req.user && req.user._id) {
                   query._id = { $ne: req.user._id };
             }

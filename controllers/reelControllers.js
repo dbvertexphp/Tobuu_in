@@ -1795,14 +1795,14 @@ const searchReels = asyncHandler(async (req, res) => {
             // Add the label "Reels List" to each item in the reels array
             let transformedReels = reels.map((reel) => ({
                   ...reel.toObject(),
-                  label: "Reels List",
+                  label: "Quicky List",
             }));
 
             if (transformedReels.length === 4) {
                   transformedReels.push({
                         _id: "See_All",
                         title: "See All",
-                        label: "Reels List",
+                        label: "Quicky List",
                   });
             }
 
