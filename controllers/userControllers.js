@@ -76,6 +76,7 @@ const getUserView = asyncHandler(async (req, res) => {
                   "mobile",
                   "password",
                   "otp",
+                  "email"
             ];
 
             // Exclude karne wale fields ke liye projection object banayein
