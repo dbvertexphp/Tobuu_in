@@ -46,6 +46,19 @@ const updateChatStatus = async (userId, newStatus) => {
       }
 };
 
+function generateOfflineId(length) {
+      let result = "";
+      const characters =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      const charactersLength = characters.length;
+      for (let i = 0; i < length; i++) {
+            result += characters.charAt(
+                  Math.floor(Math.random() * charactersLength)
+            );
+      }
+      return result;
+}
+
 const createSocketIO = (server) => {
       const io = new Server(server, {
             pingTimeout: 60000,
@@ -126,6 +139,10 @@ const createSocketIO = (server) => {
                                     "message received",
                                     newMessageRecieved
                               );
+                              const OfflineId = generateOfflineId(8);
+                              socket.broadcast.emit("offline_room", {
+                                    OfflineId,
+                              });
                         });
                   } catch (error) {
                         console.error("Error in new message event:", error);

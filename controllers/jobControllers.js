@@ -5,6 +5,7 @@ require("dotenv").config();
 const baseURL = process.env.BASE_URL;
 const { getSignedUrlS3 } = require("../config/aws-s3.js");
 const { createNotification } = require("./notificationControllers.js");
+const moment = require("moment-timezone");
 
 const uploadPostJob = asyncHandler(async (req, res) => {
       const user_id = req.user._id; // Assuming you have user authentication middleware
@@ -287,8 +288,15 @@ const appliedPostJob = asyncHandler(async (req, res) => {
                   // Check if user_id already exists in the user_ids array
                   if (!existingApplication.user_ids.includes(user_id)) {
                         // If it doesn't exist, update the user_ids array
+                        const currentTime = moment().tz("Asia/Kolkata");
+                        const datetime = currentTime.format(
+                              "DD-MM-YYYY HH:mm:ss"
+                        );
                         await existingApplication.updateOne({
-                              $addToSet: { user_ids: user_id },
+                              $addToSet: {
+                                    user_ids: user_id,
+                              },
+                              datetime: datetime,
                         });
 
                         return res.json({
@@ -302,11 +310,14 @@ const appliedPostJob = asyncHandler(async (req, res) => {
                         });
                   }
             } else {
+                  const currentTime = moment().tz("Asia/Kolkata");
+                  const datetime = currentTime.format("DD-MM-YYYY HH:mm:ss");
                   // If it doesn't exist, create a new job application
                   const newApplication = new AppliedUser({
                         user_ids: [user_id],
                         job_id,
                         category_id: jobData.category_id,
+                        datetime: datetime,
                   });
 
                   const jobreceiver_id = await PostJob.findOne({
@@ -352,7 +363,7 @@ const getAppliedJobs = asyncHandler(async (req, res) => {
             let appliedJobsQuery = AppliedUser.find({
                   user_ids: user_id,
             })
-                  .sort({ _id: -1 })
+                  .sort({ datetime: -1 })
                   .populate({
                         path: "job_id",
                         match: { deleted_at: null }, // Filter to retrieve only job_id documents with deleted_at as null
