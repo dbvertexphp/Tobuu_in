@@ -32,6 +32,7 @@ const {
       updateUserWatchTime,
       UserAdminStatus,
       ManullyListUpdate,
+      UpdateMobileAdmin,
 } = require("../controllers/userControllers.js");
 const {
       CreateCalendar,
@@ -71,6 +72,7 @@ userRoutes.route("/").get(protect, getUsers);
 userRoutes.route("/logoutUser").get(protect, logoutUser);
 userRoutes.route("/updateUserProfile").put(protect, updateProfileData);
 userRoutes.route("/searchUsers").post(protect, searchUsers);
+userRoutes.route("/UpdateMobileAdmin").post(protect, UpdateMobileAdmin);
 userRoutes.route("/ChangePassword").put(protect, ChangePassword);
 userRoutes.route("/profilePicUpload").put(protect, profilePicUpload);
 userRoutes.route("/bankdetailsUpload").post(protect, bank_Detail_create);

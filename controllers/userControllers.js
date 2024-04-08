@@ -72,11 +72,9 @@ const getUserView = asyncHandler(async (req, res) => {
             // Fields jo query se exclude karna hai ko specify karein
             const excludedFields = [
                   "otp_verified",
-                  "email",
                   "mobile",
                   "password",
                   "otp",
-                  "email"
             ];
 
             // Exclude karne wale fields ke liye projection object banayein
@@ -1637,6 +1635,34 @@ const ManullyListUpdate = asyncHandler(async (req, res) => {
       }
 });
 
+const UpdateMobileAdmin = asyncHandler(async (req, res) => {
+      const { UserId, mobile } = req.body;
+      const _id = UserId;
+      // Find the user by mobile number
+      const user = await User.findOne({ _id });
+      const usermobile = await User.findOne({ mobile });
+
+      if (usermobile) {
+            res.status(200).json({
+                  message: "Mobile number already exit.",
+                  status: true,
+            });
+            return;
+      }
+      // Update the user's otp field with the new OTP
+      const result = await User.updateOne(
+            { _id: user._id },
+            { $set: { mobile: mobile } }
+      );
+
+      // Send the new OTP to the user (you can implement this logic)
+
+      res.json({
+            message: "Mobile number successfully.",
+            status: true,
+      });
+});
+
 module.exports = {
       getUsers,
       registerUser,
@@ -1670,4 +1696,5 @@ module.exports = {
       updateUserWatchTime,
       UserAdminStatus,
       ManullyListUpdate,
+      UpdateMobileAdmin,
 };
