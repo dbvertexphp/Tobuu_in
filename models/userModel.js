@@ -10,6 +10,7 @@ const { getSignedUrlS3 } = require("../config/aws-s3.js");
 const userSchema = mongoose.Schema({
       first_name: { type: String, required: true },
       last_name: { type: String, required: true },
+      full_name: { type: String },
       email: {
             type: String,
             required: true,

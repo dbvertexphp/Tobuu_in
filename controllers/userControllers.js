@@ -198,6 +198,7 @@ const registerUser = asyncHandler(async (req, res) => {
       const otp = generateOTP();
       const type = "Signup";
       TextLocalApi(type, first_name, mobile, otp);
+      const full_name = `${first_name} ${last_name}`;
       const user = await User.create({
             first_name,
             last_name,
@@ -207,6 +208,7 @@ const registerUser = asyncHandler(async (req, res) => {
             password,
             otp, // Add the OTP field
             dob,
+            full_name,
       });
       if (user) {
             // Increment reels_count in AdminDashboard
@@ -290,16 +292,19 @@ const authUser = asyncHandler(async (req, res) => {
             const token = generateToken(userdata._id);
 
             // Set the token in a cookie for 30 days
-            res.setHeader(
-                  "Set-Cookie",
-                  cookie.serialize("Websitetoken", token, {
-                        httpOnly: false,
-                        expires: new Date(
-                              Date.now() + 60 * 60 * 24 * 10 * 1000
-                        ), // 30 days
-                        path: "/",
-                  })
-            );
+
+            // if (!userdata?.IsAdmin || userdata.IsAdmin !== "true") {
+            //       res.setHeader(
+            //             "Set-Cookie",
+            //             cookie.serialize("Websitetoken", token, {
+            //                   httpOnly: false,
+            //                   expires: new Date(
+            //                         Date.now() + 60 * 60 * 24 * 10 * 1000
+            //                   ), // 30 days
+            //                   path: "/",
+            //             })
+            //       );
+            // }
 
             const user = {
                   ...userdata._doc,
@@ -906,32 +911,12 @@ const searchUsers = asyncHandler(async (req, res) => {
       try {
             let query = {
                   $or: [
-                        { first_name: { $regex: name, $options: "i" } },
+                        { full_name: { $regex: name, $options: "i" } },
                         { username: { $regex: name, $options: "i" } },
                   ],
             };
 
             // If name contains a space, search for the last name as well
-            if (name.includes(" ")) {
-                  const [firstName, lastName] = name.split(" ");
-                  query = {
-                        $or: [
-                              {
-                                    first_name: {
-                                          $regex: firstName,
-                                          $options: "i",
-                                    },
-                              },
-                              {
-                                    last_name: {
-                                          $regex: lastName,
-                                          $options: "i",
-                                    },
-                              },
-                              { username: { $regex: name, $options: "i" } },
-                        ],
-                  };
-            }
 
             // Exclude the current user if req.user._id is available
             if (req.user && req.user._id) {
@@ -1663,6 +1648,27 @@ const UpdateMobileAdmin = asyncHandler(async (req, res) => {
       });
 });
 
+const updateAllUsersFullName = asyncHandler(async (req, res) => {
+      try {
+            // Find all users
+            const users = await User.find({});
+
+            // Update full name for each user
+            for (const user of users) {
+                  const fullName = `${user.first_name} ${user.last_name}`;
+                  user.full_name = fullName;
+                  await user.save({ fields: ["full_name"] }); // Only save full_name field
+                  console.log(
+                        `Updated full name for user ${user._id}: ${fullName}`
+                  );
+            }
+
+            console.log("All users updated successfully");
+      } catch (error) {
+            console.error("Error updating users:", error);
+      }
+});
+
 module.exports = {
       getUsers,
       registerUser,
@@ -1697,4 +1703,5 @@ module.exports = {
       UserAdminStatus,
       ManullyListUpdate,
       UpdateMobileAdmin,
+      updateAllUsersFullName,
 };

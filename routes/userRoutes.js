@@ -33,6 +33,7 @@ const {
       UserAdminStatus,
       ManullyListUpdate,
       UpdateMobileAdmin,
+      updateAllUsersFullName,
 } = require("../controllers/userControllers.js");
 const {
       CreateCalendar,
@@ -61,6 +62,7 @@ userRoutes.route("/ForgetresendOTP").post(ForgetresendOTP);
 userRoutes.route("/forgetPassword").put(forgetPassword);
 
 userRoutes.route("/ManullyListUpdate").get(ManullyListUpdate);
+userRoutes.route("/updateAllUsersFullName").get(updateAllUsersFullName);
 userRoutes.route("/getAllUsersWebsite").post(commonProtect, getAllUsersWebsite);
 /*------------- Comman Auth Routes --------------------- */
 userRoutes.route("/getUserView/:_id/").get(commonProtect, getUserView);
