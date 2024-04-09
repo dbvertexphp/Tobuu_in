@@ -1142,7 +1142,7 @@ const getVideoUploadUrlS3 = asyncHandler(async (req, res) => {
 
 const searchVideos = asyncHandler(async (req, res) => {
       const { page = 1, title = "" } = req.body;
-      const perPage = 4; // You can adjust this according to your requirements
+      const perPage = 15; // You can adjust this according to your requirements
 
       // Build the query based on title with case-insensitive search
       const query = {
@@ -1162,14 +1162,6 @@ const searchVideos = asyncHandler(async (req, res) => {
                   ...video.toObject(),
                   label: "Video List", // Add the label field
             }));
-
-            if (transformedVideos.length === 4) {
-                  transformedVideos.push({
-                        _id: "See_All",
-                        title: "See All",
-                        label: "Video List",
-                  });
-            }
 
             res.json({
                   data: transformedVideos,

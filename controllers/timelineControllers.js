@@ -971,7 +971,7 @@ const statusUpdate = async (req, res) => {
 
 const searchPostsOnTimeline = asyncHandler(async (req, res) => {
       const { page = 1, title = "" } = req.body;
-      const perPage = 4; // You can adjust this according to your requirements
+      const perPage = 15; // You can adjust this according to your requirements
 
       // Build the query based on title with case-insensitive search
       const query = {
@@ -993,14 +993,6 @@ const searchPostsOnTimeline = asyncHandler(async (req, res) => {
                   ...post.toObject(),
                   label: "Timeline List",
             }));
-
-            if (postsWithLabel.length === 4) {
-                  postsWithLabel.push({
-                        _id: "See_All",
-                        title: "See All",
-                        label: "Timeline List",
-                  });
-            }
 
             res.json({
                   data: postsWithLabel,

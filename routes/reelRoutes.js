@@ -24,6 +24,7 @@ const {
       getPaginatedReelWebsite,
       ViewCountAdd,
       ReelViewUserList,
+      getPaginatedReelWebsiteFillter,
 } = require("../controllers/reelControllers.js");
 const protect = require("../middleware/authMiddleware.js");
 const commonProtect = require("../middleware/comman_authMiddleware.js");
@@ -45,6 +46,9 @@ reelRoutes
 reelRoutes
       .route("/getPaginatedReelWebsite/:page/:share_Id")
       .post(commonProtect, getPaginatedReelWebsite);
+reelRoutes
+      .route("/getPaginatedReelWebsiteFillter/:page/:share_Id")
+      .post(commonProtect, getPaginatedReelWebsiteFillter);
 reelRoutes.route("/getReel_ByCategory").post(commonProtect, getReel_ByCategory);
 reelRoutes.route("/streamReel/:reelId").get(streamReel);
 reelRoutes.route("/getReelThumbnails/:limit").post(getReelThumbnails);

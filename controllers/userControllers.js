@@ -907,7 +907,7 @@ const getAllUsersWebsite = asyncHandler(async (req, res) => {
 
 const searchUsers = asyncHandler(async (req, res) => {
       const { page = 1, name = "" } = req.body;
-      const perPage = 4; // Adjust according to your requirements
+      const perPage = 15; // Adjust according to your requirements
       try {
             let query = {
                   $or: [
@@ -933,14 +933,6 @@ const searchUsers = asyncHandler(async (req, res) => {
                   title: `${user.first_name} ${user.last_name}`,
                   label: "User List",
             }));
-
-            if (transformedUsers.length === 4) {
-                  transformedUsers.push({
-                        _id: "See_All",
-                        title: "See All",
-                        label: "User List",
-                  });
-            }
 
             const totalCount = await User.countDocuments(query);
             const totalPages = Math.ceil(totalCount / perPage);
