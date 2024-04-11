@@ -199,6 +199,13 @@ const registerUser = asyncHandler(async (req, res) => {
       const type = "Signup";
       TextLocalApi(type, first_name, mobile, otp);
       const full_name = `${first_name} ${last_name}`;
+
+      // Split the date string into day, month, and year components
+      const [month, day, year] = dob.split("/");
+
+      // Reformat the date string to the desired format: DD-MM-YYYY
+      const dob_format = `${day}-${month}-${year}`;
+
       const user = await User.create({
             first_name,
             last_name,
@@ -207,7 +214,7 @@ const registerUser = asyncHandler(async (req, res) => {
             username,
             password,
             otp, // Add the OTP field
-            dob,
+            dob: dob_format,
             full_name,
       });
       if (user) {
@@ -549,6 +556,12 @@ const updateProfileData = asyncHandler(async (req, res) => {
             req.body;
 
       const userId = req.user._id; // Assuming you have user authentication middleware
+      const full_name = `${first_name} ${last_name}`;
+
+      const [month, day, year] = dob.split("/");
+
+      // Reformat the date string to the desired format: DD-MM-YYYY
+      const dob_format = `${day}-${month}-${year}`;
 
       try {
             // Update the user's profile fields if they are provided in the request
@@ -560,8 +573,9 @@ const updateProfileData = asyncHandler(async (req, res) => {
                               about_me: about_me,
                               last_name: last_name,
                               first_name: first_name,
-                              dob: dob ? new Date(dob) : undefined,
+                              dob: dob_format,
                               address: address,
+                              full_name: full_name,
                         },
                   },
                   { new: true }

@@ -28,7 +28,7 @@ const userSchema = mongoose.Schema({
       about_me: { type: String },
       Chat_Status: { type: String, default: "Offline" },
       address: { type: String },
-      dob: { type: Date },
+      dob: { type: String },
       pic: {
             type: String,
             required: true,
