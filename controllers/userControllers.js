@@ -558,10 +558,7 @@ const updateProfileData = asyncHandler(async (req, res) => {
       const userId = req.user._id; // Assuming you have user authentication middleware
       const full_name = `${first_name} ${last_name}`;
 
-      const [month, day, year] = dob.split("/");
-
-      // Reformat the date string to the desired format: DD-MM-YYYY
-      const dob_format = `${day}-${month}-${year}`;
+      console.log(dob);
 
       try {
             // Update the user's profile fields if they are provided in the request
@@ -573,7 +570,7 @@ const updateProfileData = asyncHandler(async (req, res) => {
                               about_me: about_me,
                               last_name: last_name,
                               first_name: first_name,
-                              dob: dob_format,
+                              dob: dob,
                               address: address,
                               full_name: full_name,
                         },
