@@ -918,7 +918,7 @@ const getAllUsersWebsite = asyncHandler(async (req, res) => {
 
 const searchUsers = asyncHandler(async (req, res) => {
       const { page = 1, name = "" } = req.body;
-      const perPage = 15; // Adjust according to your requirements
+      const perPage = 100; // Adjust according to your requirements
       try {
             let query = {
                   $or: [
@@ -1136,7 +1136,7 @@ const getReview = asyncHandler(async (req, res) => {
             const notifications = await Review.find({
                   review_id: user_id,
             })
-                  .sort({ datetime: -1 })
+                  .sort({ _id: -1 })
                   .skip((page - 1) * pageSize)
                   .limit(pageSize);
 

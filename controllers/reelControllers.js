@@ -1907,7 +1907,7 @@ const statusUpdate = async (req, res) => {
 
 const searchReels = asyncHandler(async (req, res) => {
       const { page = 1, title = "" } = req.body;
-      const perPage = 15; // You can adjust this according to your requirements
+      const perPage = 100; // You can adjust this according to your requirements
 
       // Build the query based on title with case-insensitive search
       const query = {
