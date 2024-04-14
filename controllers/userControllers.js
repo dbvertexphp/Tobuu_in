@@ -857,9 +857,8 @@ const getAllUsersWebsite = asyncHandler(async (req, res) => {
       if (search) {
             query = {
                   $or: [
-                        { first_name: { $regex: search, $options: "i" } },
+                        { full_name: { $regex: search, $options: "i" } },
                         { username: { $regex: search, $options: "i" } },
-                        { last_name: { $regex: search, $options: "i" } },
                   ],
             };
       }
