@@ -1082,16 +1082,24 @@ const deleteVideo = asyncHandler(async (req, res) => {
             await Video.findByIdAndDelete(objectIdVideoId);
 
             // Delete the video file
-            const thumbnail_name_url = await DeleteSignedUrlS3(
-                  videoDetails.thumbnail_name
-            );
+            if (
+                  videoDetails.thumbnail_name !=
+                  "Video_defult/video_defult_thumbunil.jpg"
+            ) {
+                  const thumbnail_name_url = await DeleteSignedUrlS3(
+                        videoDetails.thumbnail_name
+                  );
+                  const deleteThumbnailResponse = await fetch(
+                        thumbnail_name_url,
+                        {
+                              method: "DELETE",
+                        }
+                  );
+            }
             const video_name_url = await DeleteSignedUrlS3(
                   videoDetails.video_name
             );
 
-            const deleteThumbnailResponse = await fetch(thumbnail_name_url, {
-                  method: "DELETE",
-            });
             const deleteVideoResponse = await fetch(video_name_url, {
                   method: "DELETE",
             });

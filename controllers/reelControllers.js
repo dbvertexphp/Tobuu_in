@@ -1703,10 +1703,8 @@ const deleteReel = asyncHandler(async (req, res) => {
                   });
             }
 
-            const reelDetails = await Reel.findById({
-                  reel_id,
-                  deleted_at: null,
-            });
+            const reelDetails = await Reel.findById(reel_id);
+
             if (!reelDetails) {
                   return res.status(403).json({
                         message: "Reels Id Not Found.",
@@ -1736,26 +1734,30 @@ const deleteReel = asyncHandler(async (req, res) => {
             await Reel.findByIdAndDelete(objectIdReelId);
 
             // Delete the reel file
-            const thumbnail_name_url = await DeleteSignedUrlS3(
-                  reelDetails.thumbnail_name
-            );
+            if (
+                  reelDetails.thumbnail_name !=
+                  "Reels_defult/reel_defult_thumbunil.jpg"
+            ) {
+                  const thumbnail_name_url = await DeleteSignedUrlS3(
+                        reelDetails.thumbnail_name
+                  );
+                  const deleteThumbnailResponse = await fetch(
+                        thumbnail_name_url,
+                        {
+                              method: "DELETE",
+                        }
+                  );
+            }
+
             const reels_name_url = await DeleteSignedUrlS3(
                   reelDetails.reel_name
             );
 
-            const deleteThumbnailResponse = await fetch(thumbnail_name_url, {
-                  method: "DELETE",
-            });
             const deleteVideoResponse = await fetch(reels_name_url, {
                   method: "DELETE",
             });
 
-            await AdminDashboard.updateOne(
-                  {
-                        /* Your condition to identify the relevant row in admindashboards */
-                  },
-                  { $inc: { reels_count: -1 } }
-            );
+            await AdminDashboard.updateOne({ $inc: { reels_count: -1 } });
 
             // Delete reel comments and likes (if you have models for them)
             await ReelComment.deleteMany({ reel_id: objectIdReelId });

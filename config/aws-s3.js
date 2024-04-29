@@ -26,9 +26,11 @@ async function getSignedUrlS3(key) {
 }
 
 async function DeleteSignedUrlS3(key) {
+      const expireTime = 30 * 24 * 60 * 60; // 30 days in seconds
       const command = new DeleteObjectCommand({
             Bucket: process.env.S3_BUCKET,
             Key: key,
+            Expires: expireTime, // Set expiration time
       });
       return getSignedUrl(client, command);
 }
