@@ -34,6 +34,8 @@ const {
       ManullyListUpdate,
       UpdateMobileAdmin,
       updateAllUsersFullName,
+      Put_Profile_Pic_munally,
+      Delete_DeleteSignedUrlS3
 } = require("../controllers/userControllers.js");
 const {
       CreateCalendar,
@@ -67,6 +69,8 @@ userRoutes.route("/getAllUsersWebsite").post(commonProtect, getAllUsersWebsite);
 /*------------- Comman Auth Routes --------------------- */
 userRoutes.route("/getUserView/:_id/").get(commonProtect, getUserView);
 
+userRoutes.route("/Profile_Pic_munally").get(Put_Profile_Pic_munally);
+userRoutes.route("/Delete_DeleteSignedUrlS3").get(Delete_DeleteSignedUrlS3);
 /*------------- Auth Routes --------------------- */
 
 userRoutes.route("/").get(protect, getUsers);

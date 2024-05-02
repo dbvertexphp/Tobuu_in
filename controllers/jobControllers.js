@@ -93,16 +93,17 @@ const getPaginatedJob = asyncHandler(async (req, res) => {
 
             const filteredJobs = await jobQuery.exec();
             const token = req.header("Authorization");
-            let paginatedJobs;
-            if (token) {
-                  paginatedJobs = filteredJobs.filter(
-                        (job) =>
-                              job.user_id._id.toString() !==
-                              req.user._id.toString()
-                  );
-            } else {
-                  paginatedJobs = await jobQuery.exec();
-            }
+            // let paginatedJobs;
+            // if (token) {
+            //       paginatedJobs = filteredJobs.filter(
+            //             (job) =>
+            //                   job.user_id._id.toString() !==
+            //                   req.user._id.toString()
+            //       );
+            // } else {
+            //       paginatedJobs = await jobQuery.exec();
+            // }
+            const paginatedJobs = await jobQuery.exec();
 
             const hasMore = startIndex + paginatedJobs.length < totalJobs;
 

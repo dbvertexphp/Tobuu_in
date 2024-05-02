@@ -108,8 +108,9 @@ const fetchChats = asyncHandler(async (req, res) => {
 
             const results = await Chat.find({
                   users: { $elemMatch: { $eq: req.user._id } },
-                  latestMessage: { $ne: null }, // Filter for non-null latestMessage
+                  latestMessage: { $ne: null }, // Null न होने वाले latestMessage के लिए फ़िल्टर करें
             })
+                  .sort({ "latestMessage": -1 }) // latestMessage के तारीख के आधार पर सॉर्ट करें
                   .populate({
                         path: "users",
                         select: "first_name last_name pic _id",
@@ -117,7 +118,6 @@ const fetchChats = asyncHandler(async (req, res) => {
                   .populate({
                         path: "latestMessage",
                   })
-                  .sort({ "updatedAt": -1 })
                   .skip(skip)
                   .limit(pageSize);
 

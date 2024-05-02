@@ -27,7 +27,11 @@ const { Hire, HireStatus } = require("../models/hireModel.js");
 require("dotenv").config();
 const baseURL = process.env.BASE_URL;
 const { createNotification } = require("./notificationControllers.js");
-const { PutObjectProfilePic, getSignedUrlS3 } = require("../config/aws-s3.js");
+const {
+      PutObjectProfilePic,
+      getSignedUrlS3,
+      DeleteSignedUrlS3,
+} = require("../config/aws-s3.js");
 const dayjs = require("dayjs");
 
 const getUsers = asyncHandler(async (req, res) => {
@@ -1671,6 +1675,22 @@ const updateAllUsersFullName = asyncHandler(async (req, res) => {
       }
 });
 
+const Put_Profile_Pic_munally = asyncHandler(async (req, res) => {
+      const profilepicget_url = await PutObjectProfilePic("000000");
+      return res.status(200).json({
+            profilepicget_url,
+            status: true,
+      });
+});
+
+const Delete_DeleteSignedUrlS3 = asyncHandler(async (req, res) => {
+      const profilepicget_url = await DeleteSignedUrlS3("Profile/000000");
+      return res.status(200).json({
+            profilepicget_url,
+            status: true,
+      });
+});
+
 module.exports = {
       getUsers,
       registerUser,
@@ -1706,4 +1726,6 @@ module.exports = {
       ManullyListUpdate,
       UpdateMobileAdmin,
       updateAllUsersFullName,
+      Put_Profile_Pic_munally,
+      Delete_DeleteSignedUrlS3,
 };
