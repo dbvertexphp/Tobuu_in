@@ -1357,6 +1357,7 @@ const getNotificationId = asyncHandler(async (req, res) => {
             res.status(500).json({ error: "Internal Server Error" });
       }
 });
+
 const UserAdminStatus = asyncHandler(async (req, res) => {
       const userId = req.body.userId;
       try {

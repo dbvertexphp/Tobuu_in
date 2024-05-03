@@ -220,4 +220,24 @@ const formatDateLabel = (datetime) => {
       return `${formattedDay}-${formattedMonth}-${formattedYear}`;
 };
 
-module.exports = { allMessages, sendMessage };
+const UpdateMessagesRead = asyncHandler(async (req, res) => {
+      const { messagesId } = req.body;
+
+      // Find the user by mobile number
+      const user = await Message.findOne({ messagesId });
+
+      // Update the user's otp field with the new OTP
+      const result = await Message.updateOne(
+            { _id: messagesId },
+            { $set: { readBy: true } }
+      );
+
+      // Send the new OTP to the user (you can implement this logic)
+
+      res.json({
+            message: "Read Message successfully.",
+            status: true,
+      });
+});
+
+module.exports = { allMessages, sendMessage, UpdateMessagesRead };
