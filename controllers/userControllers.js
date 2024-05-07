@@ -653,12 +653,11 @@ const forgetPassword = asyncHandler(async (req, res) => {
 });
 
 const ChangePassword = asyncHandler(async (req, res) => {
-      const { newPassword } = req.body;
+      const { oldPassword, newPassword } = req.body;
       const userId = req.user._id; // Assuming you have user authentication middleware
 
       // Find the user by _id
       const user = await User.findById(userId);
-
       if (!user) {
             res.status(200).json({
                   message: "User Not Found.",
@@ -667,13 +666,43 @@ const ChangePassword = asyncHandler(async (req, res) => {
             return;
       }
 
-      user.password = newPassword;
+      // Check if the provided old password matches the current password
+      const isOldPasswordCorrect = await bcrypt.compare(
+            oldPassword,
+            user.password
+      );
+      if (!isOldPasswordCorrect) {
+            res.status(200).json({
+                  message: "Incorrect old password.",
+                  status: false,
+            });
+            return;
+      }
 
-      // Save the updated user with the new password
-      await user.save();
+      // Check if the new password is the same as the old one
+      const isNewPasswordSameAsOld = await bcrypt.compare(
+            newPassword,
+            user.password
+      );
+      if (isNewPasswordSameAsOld) {
+            res.status(200).json({
+                  message: "New password must be different from the old password.",
+                  status: false,
+            });
+            return;
+      }
+
+      // Hash the new password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+      const result = await User.updateOne(
+            { _id: user._id },
+            { $set: { password: hashedPassword } }
+      );
 
       res.json({
-            message: "Password Change successfully.",
+            message: "Password changed successfully.",
             status: true,
       });
 });
