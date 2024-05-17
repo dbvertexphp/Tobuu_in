@@ -144,6 +144,8 @@ const createSocketIO = (server) => {
                               socket.broadcast.emit("offline_room", {
                                     OfflineId,
                                     userId: user._id,
+                                    myId: newMessageRecieved.response.sender
+                                          ._id,
                               });
                         });
                   } catch (error) {
