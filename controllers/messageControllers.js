@@ -110,6 +110,14 @@ const sendMessage = asyncHandler(async (req, res) => {
       // Check if the sender is blocked
       const chat = await Chat.findById(chatId);
 
+      // const users = await User.findById(chat.users[0]);
+      // let readBy;
+      // if (users.Chat_Status == "Online") {
+      //       readBy = true;
+      // } else {
+      //       readBy = false;
+      // }
+
       if (!chat || chat.blockedUsers.length > 0) {
             console.log(
                   "Blocked users found or chat not found. Message not saved."
@@ -125,6 +133,7 @@ const sendMessage = asyncHandler(async (req, res) => {
             content: content,
             chat: chatId,
             datetime: datetime,
+            // readBy: readBy,
       };
 
       try {

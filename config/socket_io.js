@@ -3,6 +3,8 @@
 const { Server } = require("socket.io");
 const http = require("http");
 const { User } = require("../models/userModel");
+const Message = require("../models/messageModel"); // Adjust the path based on your project structure
+
 // Initialize Socket.IO server
 // Import necessary libraries and set up your HTTP server
 
@@ -99,13 +101,24 @@ const createSocketIO = (server) => {
                   }
             });
 
+            // socket.on("join chat", (room) => {
+            //       console.log("join chat room", room);
+            //       socket.in(room).emit("Join chat read", {
+            //             room: room,
+            //       });
+            //       socket.join(room);
+            // });
             socket.on("join chat", (room) => {
                   //console.log("join chat room", room);
+                  const OfflineId = generateOfflineId(8);
                   socket.join(room);
+                  socket.in(room).emit("read by", {
+                        rendomroomId: OfflineId,
+                  });
             });
 
             socket.on("typing", (data) => {
-                  //console.log("typing");
+                  // console.log("typing", data);
                   socket.in(data.chatData.room).emit("typing");
             });
 
@@ -153,12 +166,81 @@ const createSocketIO = (server) => {
                   }
             });
 
+            socket.on("message read", async (user_id) => {
+                  try {
+                        // Validate message_id and user_id
+                        // if (!messsage_id || !user_id) {
+                        //       console.error("Invalid message_id or user_id");
+                        //       return;
+                        // }
+
+                        // Assuming user_id.chat.users is an array of user objects within the chat
+                        for (const user of user_id.chat.users) {
+                              if (user._id !== user_id.sender._id) {
+                                    const userInfo = await User.find({
+                                          _id: user._id,
+                                    });
+                                    if (userInfo.length > 0) {
+                                          const chatStatus =
+                                                userInfo[0].Chat_Status;
+                                          console.log(chatStatus);
+                                          console.log(userInfo);
+
+                                          // If user is online, update the message read status
+                                          if (chatStatus === "Online") {
+                                                io.emit(
+                                                      "message read update",
+                                                      user._id
+                                                );
+                                                // await Message.findByIdAndUpdate(
+                                                //       message_id,
+                                                //       {
+                                                //             readBy: true,
+                                                //       }
+                                                // );
+                                          }
+                                    } else {
+                                          console.log(
+                                                `User with ID ${user._id} not found.`
+                                          );
+                                    }
+                              }
+                        }
+
+                        // const user = await User.find({ _id: user_id });
+                        // console.log(user);
+
+                        // if (user.length > 0) {
+                        //       console.log(user[0].Chat_Status);
+                        //       if (user[0].Chat_Status === "Online") {
+                        //             io.emit("message read update", user_id);
+                        //             await Message.findByIdAndUpdate(
+                        //                   messsage_id,
+                        //                   {
+                        //                         readBy: true,
+                        //                   }
+                        //             );
+                        //       }
+                        // } else {
+                        //       console.log(
+                        //             "User not found or user array is empty."
+                        //       );
+                        // }
+                  } catch (error) {
+                        console.error(
+                              "Error updating message read status:",
+                              error
+                        );
+                  }
+            });
+
             socket.on("disconnect", () => {
                   // Get the user ID of the disconnected user
                   delete connectedUsers[socket.id];
                   const userId = Object.keys(socket.rooms).find(
                         (room) => room !== socket.id
                   );
+
                   // console.log("disconnect", socket.id);
                   if (userId) {
                         // Emit online status for the disconnected user
