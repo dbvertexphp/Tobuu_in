@@ -166,17 +166,11 @@ const createSocketIO = (server) => {
                   }
             });
 
-            socket.on("message read", async (user_id) => {
+            socket.on("message read", async (response) => {
                   try {
-                        // Validate message_id and user_id
-                        // if (!messsage_id || !user_id) {
-                        //       console.error("Invalid message_id or user_id");
-                        //       return;
-                        // }
-
-                        // Assuming user_id.chat.users is an array of user objects within the chat
-                        for (const user of user_id.chat.users) {
-                              if (user._id !== user_id.sender._id) {
+                        // Assuming response.chat.users is an array of user objects within the chat
+                        for (const user of response.chat.users) {
+                              if (user._id !== response.sender._id) {
                                     const userInfo = await User.find({
                                           _id: user._id,
                                     });
@@ -206,26 +200,6 @@ const createSocketIO = (server) => {
                                     }
                               }
                         }
-
-                        // const user = await User.find({ _id: user_id });
-                        // console.log(user);
-
-                        // if (user.length > 0) {
-                        //       console.log(user[0].Chat_Status);
-                        //       if (user[0].Chat_Status === "Online") {
-                        //             io.emit("message read update", user_id);
-                        //             await Message.findByIdAndUpdate(
-                        //                   messsage_id,
-                        //                   {
-                        //                         readBy: true,
-                        //                   }
-                        //             );
-                        //       }
-                        // } else {
-                        //       console.log(
-                        //             "User not found or user array is empty."
-                        //       );
-                        // }
                   } catch (error) {
                         console.error(
                               "Error updating message read status:",
