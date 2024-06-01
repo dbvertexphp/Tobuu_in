@@ -36,9 +36,14 @@ const userSchema = mongoose.Schema({
       },
       deleted: { type: Boolean, default: false },
       deleted_at: { type: Date, default: null },
+      // datetime: {
+      //       type: String,
+      //       default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
+      // },
       datetime: {
             type: String,
-            default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
+            default: () =>
+                  moment().tz("Asia/Kolkata").format("YYYY-MMM-DD hh:mm:ss A"),
       },
 });
 

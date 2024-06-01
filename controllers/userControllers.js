@@ -69,6 +69,92 @@ const getUsers = asyncHandler(async (req, res) => {
       }
 });
 
+// const getUserView = asyncHandler(async (req, res) => {
+//       const user_id = req.params;
+
+//       try {
+//             // Fields jo query se exclude karna hai ko specify karein
+//             const excludedFields = [
+//                   "otp_verified",
+//                   "mobile",
+//                   "password",
+//                   "otp",
+//             ];
+
+//             // Exclude karne wale fields ke liye projection object banayein
+//             const projection = {};
+//             excludedFields.forEach((field) => {
+//                   projection[field] = 0;
+//             });
+
+//             // User ko user_id ke basis par find karein aur specified fields ko exclude karke select karein
+//             const user = await User.findById(user_id).select(projection);
+//             console.log(user);
+
+//             // Agar user nahi mila, toh User Not Found ka response bhejein
+//             if (!user) {
+//                   return res.status(200).json({
+//                         message: "User Not Found",
+//                         status: false,
+//                   });
+//             }
+
+//             // Friend_status ko "No" se set karein
+//             let Friend_status = "No";
+
+//             // Token header mein present hai ya nahi check karein
+//             const token = req.header("Authorization");
+//             if (token) {
+//                   // Check karein ki user ne current post ko like kiya hai ya nahi
+//                   const isFriend = await MyFriends.exists({
+//                         $or: [
+//                               { my_id: req.user._id, friends_id: user_id._id },
+//                               { my_id: user_id._id, friends_id: req.user._id },
+//                         ],
+//                   });
+
+//                   const isRequestPending = await MyFriends.exists({
+//                         my_id: user_id._id,
+//                         request_id: req.user._id,
+//                   });
+//                   const isRequestAccept = await MyFriends.exists({
+//                         my_id: req.user._id,
+//                         request_id: user_id._id,
+//                   });
+
+//                   // User ne post ko like kiya hai ya nahi, is par based Friend_status set karein
+//                   if (isFriend) {
+//                         Friend_status = "Yes";
+//                   } else if (isRequestPending) {
+//                         Friend_status = "Pending";
+//                   } else if (isRequestAccept) {
+//                         Friend_status = "Accept";
+//                   }
+//             }
+
+//             // User ke pic field mein BASE_URL append karein
+//             const updatedUser = {
+//                   Friend_status,
+//                   ...user._doc,
+//                   pic: user.pic,
+//                   watch_time: convertSecondsToReadableTime(user.watch_time),
+//             };
+
+//             // Response mein updatedUser aur status ka json bhejein
+//             res.json({
+//                   user: updatedUser,
+//                   status: true,
+//             });
+//       } catch (error) {
+//             // Agar koi error aaye toh usko console mein log karein aur Internal Server Error ka response bhejein
+//             console.error("GetUsers API error:", error.message);
+//             res.status(500).json({
+//                   message: "Internal Server Error",
+//                   status: false,
+//             });
+//       }
+// });
+
 const getUserView = asyncHandler(async (req, res) => {
       const user_id = req.params;
 
@@ -138,6 +224,7 @@ const getUserView = asyncHandler(async (req, res) => {
                   pic: user.pic,
                   watch_time: convertSecondsToReadableTime(user.watch_time),
             };
+            console.log(updatedUser);
 
             // Response mein updatedUser aur status ka json bhejein
             res.json({
@@ -785,6 +872,104 @@ const getBankDetailsAdmin = asyncHandler(async (req, res) => {
       }
 });
 
+// const getAllUsers = asyncHandler(async (req, res) => {
+//       const { page = 1, search = "", Short = "" } = req.body;
+//       const perPage = 10; // You can adjust this according to your requirements
+
+//       // Build the query based on search and Short
+//       const query = search
+//             ? {
+//                     $or: [
+//                           { first_name: { $regex: search, $options: "i" } },
+//                           { email: { $regex: search, $options: "i" } },
+//                           { last_name: { $regex: search, $options: "i" } },
+//                     ],
+//               }
+//             : {};
+
+//       // Sorting based on Short field
+//       let sortCriteria = {};
+//       if (Short === "Review") {
+//             sortCriteria = { review: -1 }; // Sort by review in descending order
+//       } else if (Short === "watch_time") {
+//             sortCriteria = { watch_time: -1 }; // Sort by watch_time in descending order
+//       } else if (Short === "Subscribe") {
+//             sortCriteria = { subscribe: -1 }; // Sort by subscribe in descending order
+//       } else {
+//             sortCriteria = { _id: -1 }; // Default sorting
+//       }
+
+//       try {
+//             const users = await User.find(query)
+//                   .sort(sortCriteria)
+//                   .skip((page - 1) * perPage)
+//                   .limit(perPage);
+
+//             const totalCount = await User.countDocuments(query);
+//             const totalPages = Math.ceil(totalCount / perPage);
+//             console.log(users);
+
+//             const transformedUsers = users.map((user) => {
+//                   let transformedUser = { ...user.toObject() }; // Convert Mongoose document to plain JavaScript object
+//                   if (transformedUser.pic) {
+//                         transformedUser.pic = `${baseURL}${transformedUser.pic}`;
+//                   }
+//                   if (transformedUser.watch_time) {
+//                         transformedUser.watch_time =
+//                               convertSecondsToReadableTime(
+//                                     transformedUser.watch_time
+//                               );
+//                   }
+//                   return { user: transformedUser };
+//             });
+
+//             const paginationDetails = {
+//                   current_page: parseInt(page),
+//                   data: transformedUsers,
+//                   first_page_url: `${baseURL}api/users?page=1`,
+//                   from: (page - 1) * perPage + 1,
+//                   last_page: totalPages,
+//                   last_page_url: `${baseURL}api/users?page=${totalPages}`,
+//                   links: [
+//                         {
+//                               url: null,
+//                               label: "&laquo; Previous",
+//                               active: false,
+//                         },
+//                         {
+//                               url: `${baseURL}api/users?page=${page}`,
+//                               label: page.toString(),
+//                               active: true,
+//                         },
+//                         {
+//                               url: null,
+//                               label: "Next &raquo;",
+//                               active: false,
+//                         },
+//                   ],
+//                   next_page_url: null,
+//                   path: `${baseURL}api/users`,
+//                   per_page: perPage,
+//                   prev_page_url: null,
+//                   to: (page - 1) * perPage + transformedUsers.length,
+//                   total: totalCount,
+//             };
+//             console.log(paginationDetails);
+
+//             res.json({
+//                   Users: paginationDetails,
+//                   page: page.toString(),
+//                   total_rows: totalCount,
+//             });
+//       } catch (error) {
+//             console.error(error);
+//             res.status(500).json({
+//                   message: "Internal Server Error",
+//                   status: false,
+//             });
+//       }
+// });
+
 const getAllUsers = asyncHandler(async (req, res) => {
       const { page = 1, search = "", Short = "" } = req.body;
       const perPage = 10; // You can adjust this according to your requirements
@@ -821,19 +1006,28 @@ const getAllUsers = asyncHandler(async (req, res) => {
             const totalCount = await User.countDocuments(query);
             const totalPages = Math.ceil(totalCount / perPage);
 
-            const transformedUsers = users.map((user) => {
+            // Map each user to an array of promises
+            const transformedUsersPromises = users.map(async (user) => {
                   let transformedUser = { ...user.toObject() }; // Convert Mongoose document to plain JavaScript object
                   if (transformedUser.pic) {
-                        transformedUser.pic = `${baseURL}${transformedUser.pic}`;
+                        const getSignedUrl_pic = await getSignedUrlS3(
+                              transformedUser.pic
+                        );
+                        transformedUser.pic = getSignedUrl_pic;
                   }
                   if (transformedUser.watch_time) {
                         transformedUser.watch_time =
-                              convertSecondsToReadableTime(
+                              convertSecondsToReadableTimeAdmin(
                                     transformedUser.watch_time
                               );
                   }
                   return { user: transformedUser };
             });
+
+            // Execute all promises concurrently
+            const transformedUsers = await Promise.all(
+                  transformedUsersPromises
+            );
 
             const paginationDetails = {
                   current_page: parseInt(page),
@@ -866,6 +1060,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
                   to: (page - 1) * perPage + transformedUsers.length,
                   total: totalCount,
             };
+            console.log(paginationDetails);
 
             res.json({
                   Users: paginationDetails,
@@ -1515,6 +1710,21 @@ const calculateTimeDifference = (datetime) => {
             return "Invalid date format";
       }
 };
+
+function convertSecondsToReadableTimeAdmin(seconds) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = Math.floor(seconds % 60);
+      const milliseconds = Math.floor((seconds * 1000) % 1000);
+
+      // Format the time string
+      const timeString = `${String(hours).padStart(2, "0")}:${String(
+            minutes
+      ).padStart(2, "0")}:${String(secs).padStart(2, "0")}:${String(
+            milliseconds
+      ).padStart(2, "3")}`;
+      return timeString;
+}
 
 function convertSecondsToReadableTime(seconds) {
       const hours = Math.floor(seconds / 3600);

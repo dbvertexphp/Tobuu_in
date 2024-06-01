@@ -5,7 +5,9 @@ const categorySchema = mongoose.Schema({
       category_name: { type: String, required: true },
       datetime: {
             type: String,
-            default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
+            // default: moment().tz("Asia/Kolkata").format("DD-MM-YYYY HH:mm:ss"),
+            default: () =>
+                  moment().tz("Asia/Kolkata").format("YYYY-MMM-DD hh:mm:ss A"),
       },
 });
 
